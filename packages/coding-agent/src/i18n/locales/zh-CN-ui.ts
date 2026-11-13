@@ -122,6 +122,7 @@ export const zhCNUiText: Readonly<Record<string, string>> = {
 	"to configure": "配置",
 	"to edit": "编辑",
 	"to go back": "返回",
+	"to select": "选择",
 	"go back": "返回",
 	configure: "配置",
 	Plugins: "插件",
