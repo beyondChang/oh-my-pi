@@ -418,18 +418,14 @@ export class SetupWizardComponent implements Component, OverlayFocusOwner {
 			: undefined;
 		const { scenes: steps, current } = this.#steps();
 		const contentWidth = Math.max(MIN_CONTENT_WIDTH, width - SCENE_MARGIN_X * 2);
+		// Translated copy may use double-width characters: centre by columns, not code units.
+		const setupStepLabel = `${this.ctx.localize?.("Setup step") ?? "Setup step"} ${current + 1} ${this.ctx.localize?.("of") ?? "of"} ${steps.length}`;
 		const logo = gradientLogo(PI_LOGO, 0);
 		const header = [
 			"",
 			...logo.map(line => centerLine(line, width)),
 			centerLine(theme.bold(theme.fg("accent", APP_NAME)), width),
-			centerLine(
-				theme.fg(
-					"muted",
-					`${this.ctx.localize?.("Setup step") ?? "Setup step"} ${current + 1} ${this.ctx.localize?.("of") ?? "of"} ${steps.length}`,
-				),
-				width,
-			),
+			centerLine(theme.fg("muted", setupStepLabel), width),
 			"",
 			indentLine(theme.bold(title), width, SCENE_MARGIN_X),
 		];

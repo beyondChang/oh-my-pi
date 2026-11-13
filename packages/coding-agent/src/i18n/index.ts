@@ -163,6 +163,19 @@ const dynamicStatusPatterns: ReadonlyArray<readonly [RegExp, (match: RegExpMatch
 	[/^(\d+) matches$/, m => `${m[1]} 个匹配`],
 	[/^Session compacted 1 time$/, () => "会话已压缩 1 次"],
 	[/^Session compacted (\d+) times$/, m => `会话已压缩 ${m[1]} 次`],
+	[
+		/^Python eval unavailable \((.+)\); eval will run JavaScript only\. Install Python 3\.8\+ or set python\.interpreter, then verify with `omp setup python --check`\.$/,
+		m =>
+			`Python 评估不可用（${m[1]}）；eval 将只运行 JavaScript。请安装 Python 3.8+ 或设置 python.interpreter，然后用 \`omp setup python --check\` 验证。`,
+	],
+	[
+		/^Eval tool unavailable: (.+), and JavaScript eval is disabled\. Install Python 3\.8\+ or set python\.interpreter, then verify with `omp setup python --check`\.$/,
+		m =>
+			`Eval 工具不可用：${m[1]}，且 JavaScript 评估已被禁用。请安装 Python 3.8+ 或设置 python.interpreter，然后用 \`omp setup python --check\` 验证。`,
+	],
+	// Details that probe messages carry verbatim (the surrounding sentence is translated above).
+	[/^No working Python interpreter found\. Tried: (.+)$/, m => `没有可用的 Python 解释器。已尝试：${m[1]}`],
+	[/^Python executable not found on PATH$/, () => "在 PATH 中找不到 Python 可执行文件"],
 ];
 
 function localizeAdvisorState(state: string): string {
@@ -184,14 +197,20 @@ function localizeAdvisorState(state: string): string {
 
 /**
  * Translate an exact, known English UI string; unknown dynamic text stays unchanged.
+ * `nested` lets a status pattern translate the detail it embeds without recursing forever.
  */
-export function localizeUiText(text: string): string {
+export function localizeUiText(text: string, nested = false): string {
 	if (currentLanguage === "en") return text;
 	const exact = chineseUiText.get(text);
 	if (exact !== undefined) return exact;
 	for (const [pattern, format] of dynamicStatusPatterns) {
 		const match = text.match(pattern);
-		if (match) return format(match);
+		if (match) {
+			// A nested detail (path, spawn error) gets its own translation entry when it has one.
+			if (nested) return format(match);
+			const translated = match.map(part => (typeof part === "string" ? localizeUiText(part, true) : part));
+			return format(translated as unknown as RegExpMatchArray);
+		}
 	}
 	return localizeCommonSettingValue(text) ?? text;
 }

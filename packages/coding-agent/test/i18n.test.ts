@@ -78,6 +78,16 @@ describe("i18n", () => {
 		expect(rendered).toContain("安装 npm 插件：");
 	});
 
+	it("localizes the Python eval startup warning with its nested detail", () => {
+		setLanguage("zh-CN");
+		const warning =
+			"Python eval unavailable (No working Python interpreter found. Tried: ~/WindowsApps/python.exe (exit code 9009)); eval will run JavaScript only. Install Python 3.8+ or set python.interpreter, then verify with `omp setup python --check`.";
+		expect(localizeUiText(warning)).toBe(
+			"Python 评估不可用（没有可用的 Python 解释器。已尝试：~/WindowsApps/python.exe (exit code 9009)）；eval 将只运行 JavaScript。请安装 Python 3.8+ 或设置 python.interpreter，然后用 `omp setup python --check` 验证。",
+		);
+		expect(localizeUiText("Python executable not found on PATH")).toBe("在 PATH 中找不到 Python 可执行文件");
+	});
+
 	it("keeps UI text unchanged in English", () => {
 		initializeLanguage("en");
 		expect(localizeUiText("Error:")).toBe("Error:");
