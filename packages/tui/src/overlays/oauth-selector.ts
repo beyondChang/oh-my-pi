@@ -45,6 +45,8 @@ export interface OAuthSelectorSheet {
 	readonly size: "md" | "lg";
 	readonly status?: TspText;
 	readonly leave: { readonly id: string; readonly label: string };
+	/** Display-only translation for stable English UI text. */
+	readonly localize?: (text: string) => string;
 }
 
 /**
@@ -96,6 +98,7 @@ export class OAuthSelectorComponent extends OverlayPanel {
 	#pickerItems: readonly TspPickerItem[] | undefined;
 	#pickerRoot: NativeNode | undefined;
 	#sheet: OAuthSelectorSheet | undefined;
+	#localize: ((text: string) => string) | undefined;
 	constructor(
 		mode: "login" | "logout",
 		authStorage: OAuthSelectorAuthSource,
@@ -110,6 +113,8 @@ export class OAuthSelectorComponent extends OverlayPanel {
 	) {
 		super(mode === "login" ? "Select provider to login" : "Select provider to logout", "omp.overlay.oauth");
 		this.#mode = mode;
+		this.#localize = options?.sheet?.localize;
+		if (this.#localize) this.title = this.#localize(this.title);
 		this.#authStorage = authStorage;
 		this.#onSelectCallback = onSelect;
 		this.#onCancelCallback = onCancel;
@@ -138,6 +143,7 @@ export class OAuthSelectorComponent extends OverlayPanel {
 	/** Replace the native sheet's presentation (a new outcome line, a relabelled leave action). */
 	setSheet(sheet: OAuthSelectorSheet): void {
 		this.#sheet = sheet;
+		this.#localize = sheet.localize;
 		this.#pickerRoot = undefined;
 	}
 
@@ -305,9 +311,9 @@ export class OAuthSelectorComponent extends OverlayPanel {
 
 	#renderStatusLine(_total: number): string {
 		const query = this.#menu.query.trim();
-		if (!query) return theme.fg("muted", "Type to search");
+		if (!query) return theme.fg("muted", this.#localize?.("Type to search") ?? "Type to search");
 		const width = visibleWidth(this.#search.getValue()) + 1;
-		return theme.fg("muted", "Search: ") + (this.#search.render(width)[0] ?? "");
+		return theme.fg("muted", this.#localize?.("Search:") ?? "Search:") + " " + (this.#search.render(width)[0] ?? "");
 	}
 
 	#getProviderSearchText(provider: OAuthProviderInfo): string {
@@ -542,20 +548,29 @@ export class OAuthSelectorComponent extends OverlayPanel {
 			: CLOSE_ACTION;
 		this.#pickerRoot = dockedPicker({
 			...(sheet ? { role: sheet.role } : {}),
-			title: sheet?.title ?? (login ? "Sign in" : "Sign out"),
-			subtitle: sheet?.subtitle ?? (login ? "Pick a provider" : "Remove stored credentials"),
+			title:
+				sheet?.title ??
+				(login ? (this.#localize?.("Sign in") ?? "Sign in") : (this.#localize?.("Sign out") ?? "Sign out")),
+			subtitle:
+				sheet?.subtitle ??
+				(login
+					? (this.#localize?.("Pick a provider") ?? "Pick a provider")
+					: (this.#localize?.("Remove stored credentials") ?? "Remove stored credentials")),
 			icon: "key-round",
 			noun: "providers",
 			size: sheet?.size ?? "md",
 			layout: "cards",
 			preview: "none",
 			...search,
-			placeholder: "Search providers…",
+			placeholder: this.#localize?.("Search providers…") ?? "Search providers…",
 			items: this.#pickerItems,
 			...(query.length > 0 ? { order: this.#menu.visibleItems.map(provider => provider.id) } : {}),
 			selected: this.#menu.selectedKey ?? null,
 			total: all.length,
-			empty: login ? "No OAuth providers available" : "No stored provider credentials to log out",
+			empty: login
+				? (this.#localize?.("No OAuth providers available") ?? "No OAuth providers available")
+				: (this.#localize?.("No stored provider credentials to log out") ??
+					"No stored provider credentials to log out"),
 			...(this.#statusMessage ? { message: this.#statusMessage } : {}),
 			...(sheet?.status ? { strip: { label: sheet.status, items: [] } } : {}),
 			actions: [
@@ -596,7 +611,11 @@ export class OAuthSelectorComponent extends OverlayPanel {
 			children.push(
 				node(
 					"input",
-					{ text: this.#search.getValue(), cursor: this.#search.getCursor(), placeholder: "Type to search" },
+					{
+						text: this.#search.getValue(),
+						cursor: this.#search.getCursor(),
+						placeholder: this.#localize?.("Type to search") ?? "Type to search",
+					},
 					undefined,
 					"search",
 				),

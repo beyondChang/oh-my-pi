@@ -163,6 +163,7 @@ import {
 	cfgColorBlindMode,
 	cfgComposerShape,
 	cfgImagesAutoResize,
+	initializeLanguageFromSettings,
 	cfgMarketplaceAutoUpdate,
 	cfgSetupVersion,
 	cfgShowHardwareCursor,
@@ -1988,6 +1989,7 @@ export async function runRootCommand(
 		}
 
 		const settingsInstance = await settingsPromise;
+		initializeLanguageFromSettings(settingsInstance);
 		// Process-lifetime: broker/account-policy edits reconfigure the shared credential store.
 		createAuthStorageSettingsSync(settingsInstance, authStorage);
 		if (parsedArgs.approvalMode) {

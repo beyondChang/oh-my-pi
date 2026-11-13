@@ -1,10 +1,18 @@
 import { TERMINAL } from "@oh-my-pi/pi-tui";
 import { isNativeRendering } from "@oh-my-pi/pi-tui/native/state";
-import { SETTING_TABS, type SettingsDisplayEntry, type SettingsHost } from "@oh-my-pi/pi-tui/overlays/settings-defs";
+import {
+	SETTING_TABS,
+	TAB_LEADS,
+	TAB_METADATA,
+	type AnyUiMetadata,
+	type SettingsDisplayEntry,
+	type SettingsHost,
+} from "@oh-my-pi/pi-tui/overlays/settings-defs";
 import { isSettingsInitialized, Settings, settings } from "./settings";
 import { orderedSettings } from "./all-settings";
 import { type AnySetting, lookup } from "./registry";
 
+import { getLanguage, localizeUiText, onLanguageChanged } from "../i18n";
 import { cfgPlanAutosave, cfgPlanEnabled } from "../plan-mode/settings";
 import {
 	cfgRetryUsageAwareFallback,
@@ -53,23 +61,62 @@ function envNote(setting: AnySetting): string {
 		: ` $${setting.envName} overrides this setting while it is set.`;
 }
 
+function localizeUiMetadata(ui: AnyUiMetadata): AnyUiMetadata {
+	return {
+		...ui,
+		label: localizeUiText(ui.label),
+		description: localizeUiText(ui.description),
+		warning: ui.warning ? localizeUiText(ui.warning) : undefined,
+		options: Array.isArray(ui.options)
+			? ui.options.map(option => ({
+					...option,
+					label: localizeUiText(option.label),
+					description: option.description ? localizeUiText(option.description) : undefined,
+				}))
+			: ui.options,
+	};
+}
+
+const TAB_LABELS_EN: Readonly<Record<string, string>> = Object.fromEntries(
+	SETTING_TABS.map(tab => [tab, TAB_METADATA[tab].label]),
+);
+const TAB_LEADS_EN: Readonly<Record<string, string>> = Object.fromEntries(
+	SETTING_TABS.map(tab => [tab, TAB_LEADS[tab]]),
+);
+
+/** Translate exact English tab labels/leads supplied by the schema-independent TUI overlay. */
+export function localizeSettingsTabs(): void {
+	const chinese = getLanguage() === "zh-CN";
+	for (const tab of SETTING_TABS) {
+		const label = TAB_LABELS_EN[tab] ?? TAB_METADATA[tab].label;
+		const lead = TAB_LEADS_EN[tab] ?? TAB_LEADS[tab];
+		TAB_METADATA[tab].label = chinese ? localizeUiText(label) : label;
+		TAB_LEADS[tab] = chinese ? localizeUiText(lead) : lead;
+	}
+}
+onLanguageChanged(() => localizeSettingsTabs());
+
 /**
  * Adapt the application schema and settings store to the terminal overlay. The panel shows and
  * edits the value of the settings layers, never an environment-supplied one (so an env credential
  * is never pre-filled or written to config); descriptions note an active environment variable.
  */
 export function createSettingsHost(): SettingsHost {
+	localizeSettingsTabs();
 	const entries: SettingsDisplayEntry[] = [];
 	for (const tab of SETTING_TABS) {
 		for (const setting of orderedSettings()) {
 			const ui = setting.ui;
 			if (ui?.tab !== tab) continue;
 			const note = envNote(setting);
+			const localizedUi = localizeUiMetadata(ui);
 			entries.push({
 				path: setting.id,
 				type: setting.type,
 				defaultValue: setting.default,
-				ui: note ? { ...ui, description: `${ui.description}${note}` } : ui,
+				ui: note
+					? { ...localizedUi, description: `${localizedUi.description}${localizeUiText(note)}` }
+					: localizedUi,
 				enumValues: setting.enumValues,
 				credential: setting.isCredential,
 				condition: ui.condition ? CONDITIONS[ui.condition] : undefined,
@@ -83,6 +130,7 @@ export function createSettingsHost(): SettingsHost {
 	};
 	return {
 		entries,
+		localize: localizeUiText,
 		get: path => lookup(path)?.layered(settings),
 		set: (path, value) => resolve(path).set(settings, value),
 		unset: path => resolve(path).unset(settings),

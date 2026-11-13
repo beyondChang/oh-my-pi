@@ -1,4 +1,6 @@
 import { clearSubmittedText, restoreDetachedDraft } from "./helpers/draft";
+import { getLanguage, localizeUiText, normalizeLanguage, setLanguage } from "../i18n";
+import { cfgLanguage } from "../modes/settings";
 import type { AutocompleteItem } from "@oh-my-pi/pi-tui";
 import { COLLAB_GUEST_ALLOWED_COMMANDS } from "../collab/guest";
 import { BUILTIN_COLLABORATION_SLASH_COMMANDS } from "./builtin-collaboration";
@@ -40,8 +42,41 @@ export interface TuiBuiltinSlashCommand extends BuiltinSlashCommand {
 	getAutocompleteDescription?: () => string | undefined;
 }
 
+/** `/language` switches and persists the interface language. */
+const BUILTIN_LANGUAGE_SLASH_COMMAND: SlashCommandSpec = {
+	name: "language",
+	description: "Switch interface language",
+	allowArgs: true,
+	subcommands: [
+		{ name: "en", description: "Use the English interface" },
+		{ name: "zh-CN", description: "使用简体中文界面" },
+	],
+	handle: async (command, runtime) => {
+		const requested = command.args.trim();
+		if (!requested) {
+			const language = getLanguage();
+			const label = language === "zh-CN" ? "简体中文 (zh-CN)" : "English (en)";
+			await runtime.output(`${localizeUiText("Current language:")} ${label}`);
+			return;
+		}
+
+		const language = normalizeLanguage(requested);
+		if (!language) {
+			await runtime.output(localizeUiText("Unknown language. Use /language en or /language zh-CN."));
+			return { consumed: true, failed: true };
+		}
+
+		cfgLanguage.set(runtime.settings, language);
+		setLanguage(language);
+		await runtime.refreshCommands();
+		const label = language === "zh-CN" ? "简体中文 (zh-CN)" : "English (en)";
+		await runtime.output(`${localizeUiText("Language changed to:")} ${label}`);
+	},
+};
+
 const BUILTIN_SLASH_COMMAND_REGISTRY: ReadonlyArray<SlashCommandSpec> = [
 	...BUILTIN_MODE_SLASH_COMMANDS,
+	BUILTIN_LANGUAGE_SLASH_COMMAND,
 	...BUILTIN_COLLABORATION_SLASH_COMMANDS,
 	...BUILTIN_SESSION_SLASH_COMMANDS,
 	...BUILTIN_LIFECYCLE_SLASH_COMMANDS,
@@ -66,12 +101,14 @@ export const BUILTIN_SLASH_COMMAND_DEFS: ReadonlyArray<BuiltinSlashCommand> = BU
 		name: command.name,
 		aliases: command.aliases,
 		allowArgs: command.allowArgs === true,
-		// Getter: some descriptions name keys, formatted at read time (theme/preset may change).
 		get description() {
-			return command.description;
+			return localizeUiText(command.description);
 		},
 		icon: command.icon,
-		subcommands: command.subcommands,
+		subcommands: command.subcommands?.map(subcommand => ({
+			...subcommand,
+			description: localizeUiText(subcommand.description),
+		})),
 		subcommandOptional: command.subcommandOptional,
 		inlineHint: command.inlineHint,
 		getTuiAutocompleteDescription: command.getTuiAutocompleteDescription,
@@ -111,7 +148,10 @@ function materializeTuiBuiltinSlashCommand(
 		materialized.getInlineHint = buildStaticInlineHint(cmd.inlineHint);
 	}
 	if (runtime && cmd.getTuiAutocompleteDescription) {
-		materialized.getAutocompleteDescription = () => cmd.getTuiAutocompleteDescription?.(runtime);
+		materialized.getAutocompleteDescription = () => {
+			const description = cmd.getTuiAutocompleteDescription?.(runtime);
+			return description ? localizeUiText(description) : description;
+		};
 	}
 	return materialized;
 }

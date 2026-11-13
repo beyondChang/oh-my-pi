@@ -65,9 +65,10 @@ function stepNode(label: string, position: number, state: StepState): NativeNode
 	);
 }
 
-function sceneFooterHint(): string {
+function sceneFooterHint(localize?: (text: string) => string): string {
+	const translate = localize ?? ((text: string) => text);
 	const navKeys = editorKeys("tui.select.up", "tui.select.down");
-	return `${navKeys} select · ${editorKey("tui.select.confirm")} confirm · ${editorKey("tui.select.cancel")} skip · ${formatKeyHint("ctrl+c")} exit setup`;
+	return `${navKeys} ${translate("select")} · ${editorKey("tui.select.confirm")} ${translate("confirm")} · ${editorKey("tui.select.cancel")} ${translate("skip")} · ${formatKeyHint("ctrl+c")} ${translate("exit setup")}`;
 }
 
 function indentLine(line: string, width: number, indent: number): string {
@@ -325,7 +326,11 @@ export class SetupWizardComponent implements Component, OverlayFocusOwner {
 					);
 				}
 				steps.push(
-					stepNode(scene.step, position, position < current ? "done" : position === current ? "current" : "next"),
+					stepNode(
+						this.ctx.localize?.(scene.step) ?? scene.step,
+						position,
+						position < current ? "done" : position === current ? "current" : "next",
+					),
 				);
 			});
 			return keyed(
@@ -372,8 +377,10 @@ export class SetupWizardComponent implements Component, OverlayFocusOwner {
 	#describeScene(pickers: boolean): NativeNode {
 		const scene = this.scenes[this.#sceneIndex];
 		const active = this.#activeScene;
-		const title = active?.title ?? scene?.title ?? "Setup";
-		const subtitle = active?.subtitle;
+		const rawTitle = active?.title ?? scene?.title ?? "Setup";
+		const rawSubtitle = active?.subtitle;
+		const title = this.ctx.localize?.(rawTitle) ?? rawTitle;
+		const subtitle = rawSubtitle ? (this.ctx.localize?.(rawSubtitle) ?? rawSubtitle) : undefined;
 		const head = this.#describeHead();
 		return this.#nativeScene.get([head, active, title, subtitle, pickers], () => {
 			const body: NativeChild[] = [];
@@ -401,8 +408,14 @@ export class SetupWizardComponent implements Component, OverlayFocusOwner {
 
 	#renderScene(width: number, height: number): string[] {
 		const scene = this.scenes[this.#sceneIndex];
-		const title = this.#activeScene?.title ?? scene?.title ?? "Setup";
-		const subtitle = this.#activeScene?.subtitle;
+		const title =
+			this.ctx.localize?.(this.#activeScene?.title ?? scene?.title ?? "Setup") ??
+			this.#activeScene?.title ??
+			scene?.title ??
+			"Setup";
+		const subtitle = this.#activeScene?.subtitle
+			? (this.ctx.localize?.(this.#activeScene.subtitle) ?? this.#activeScene.subtitle)
+			: undefined;
 		const { scenes: steps, current } = this.#steps();
 		const contentWidth = Math.max(MIN_CONTENT_WIDTH, width - SCENE_MARGIN_X * 2);
 		const logo = gradientLogo(PI_LOGO, 0);
@@ -410,7 +423,13 @@ export class SetupWizardComponent implements Component, OverlayFocusOwner {
 			"",
 			...logo.map(line => centerLine(line, width)),
 			centerLine(theme.bold(theme.fg("accent", APP_NAME)), width),
-			centerLine(theme.fg("muted", `Setup step ${current + 1} of ${steps.length}`), width),
+			centerLine(
+				theme.fg(
+					"muted",
+					`${this.ctx.localize?.("Setup step") ?? "Setup step"} ${current + 1} ${this.ctx.localize?.("of") ?? "of"} ${steps.length}`,
+				),
+				width,
+			),
 			"",
 			indentLine(theme.bold(title), width, SCENE_MARGIN_X),
 		];
@@ -420,7 +439,7 @@ export class SetupWizardComponent implements Component, OverlayFocusOwner {
 		header.push("");
 		this.#bodyRowStart = header.length;
 
-		const footer = ["", centerLine(theme.fg("dim", sceneFooterHint()), width)];
+		const footer = ["", centerLine(theme.fg("dim", sceneFooterHint(this.ctx.localize)), width)];
 		const maxBodyLines = Math.max(0, height - header.length - footer.length);
 		const body = this.#activeScene?.render(contentWidth, maxBodyLines).slice(0, maxBodyLines) ?? [];
 		const lines = [...header, ...body.map(line => indentLine(line, width, SCENE_MARGIN_X))];

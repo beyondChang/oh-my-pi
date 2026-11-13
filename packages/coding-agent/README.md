@@ -15,6 +15,10 @@ Package-specific references:
 - [MCP server/tool authoring](../../docs/mcp-server-tool-authoring.md)
 - [DEVELOPMENT](./DEVELOPMENT.md)
 
+## Interface language
+
+Simplified Chinese is the default. Run `/language en` (or choose `Appearance → Language` in Settings) for the English upstream baseline. The selection is persisted in the active profile's `config.yml`. Untranslated strings, dynamic diagnostics, command arguments and model output remain in English.
+
 ## Bash visualization
 
 Embedded-shell calls default to Python-like **Pseudo**; switch to **Raw** for the original command. Syntax appears incrementally as the shell compiles it. Active commands retain their colors while inactive code fades; only failures get `×`. Values appear beside each variable's latest observed setter.

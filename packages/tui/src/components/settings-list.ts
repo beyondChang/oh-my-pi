@@ -48,6 +48,8 @@ export interface SettingItem {
 	warning?: string;
 	/** Current value to display (right side) */
 	currentValue: string;
+	/** Optional display-only label for `currentValue`; never written back to config. */
+	currentValueLabel?: string;
 	/** If provided, Enter/Space cycles through these values */
 	values?: string[];
 	/** If provided, Enter opens this submenu. Receives current value and done callback. */
@@ -709,9 +711,9 @@ export class SettingsList implements Component {
 	}
 
 	#describeItem(item: NativeDescribedSetting): NativeNode {
-		const value = plainLine(String(item.currentValue ?? ""));
+		const value = plainLine(String(item.currentValueLabel ?? item.currentValue ?? ""));
 		const changed = item.changed === true;
-		const signature = `${item.heading === true}\0${item.label}\0${value}\0${changed}\0${item.warning ?? ""}\0${item.description ?? ""}`;
+		const signature = `${item.heading === true}\0${item.label}\0${value}\0${item.currentValueLabel ?? ""}\0${changed}\0${item.warning ?? ""}\0${item.description ?? ""}`;
 		const cached = item[kNativeItem];
 		if (cached?.signature === signature) return cached.node;
 		let described: NativeNode;
@@ -786,7 +788,11 @@ export class SettingsList implements Component {
 		const labelPad = padding(Math.max(0, maxLabelWidth - visibleWidth(labelPlain)));
 		const separator = "  ";
 		const valueMaxWidth = rowWidth - prefixWidth - maxLabelWidth - visibleWidth(separator) - 2;
-		const valuePlain = truncateToWidth(String(item.currentValue ?? ""), valueMaxWidth, Ellipsis.Omit);
+		const valuePlain = truncateToWidth(
+			String(item.currentValueLabel ?? item.currentValue ?? ""),
+			valueMaxWidth,
+			Ellipsis.Omit,
+		);
 		const hovered = !isSelected && this.#theme.hovered !== undefined && item.id === this.#hoveredItemId;
 		// De-emphasized rows (outside the active section) render as plain text
 		// under one dim wash so inner label/value colors don't fight it.

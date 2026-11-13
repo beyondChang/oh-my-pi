@@ -64,12 +64,24 @@ export const COMPOSER_HINTS: readonly ComposerHint[] = [
 	},
 ];
 
-/** Render the highest-priority applicable, not-yet-learned hint, if any. */
-export function resolveComposerHint(ctx: ComposerHintContext): string | undefined {
+/**
+ * Render the highest-priority applicable, not-yet-learned hint, if any.
+ * `localize` translates the label before styling; `styled: false` returns the
+ * plain key-and-label line native editors describe (they draw no escapes).
+ */
+export function resolveComposerHint(
+	ctx: ComposerHintContext,
+	localize?: (text: string) => string,
+	options: { styled?: boolean } = {},
+): string | undefined {
 	for (const hint of COMPOSER_HINTS) {
 		if (ctx.uses(hint.id) >= hint.learnedAfter) continue;
 		const resolved = hint.resolve(ctx);
-		if (resolved) return `${theme.fg("accent", resolved.key)} ${theme.fg("dim", theme.italic(resolved.label))}`;
+		if (resolved) {
+			const label = localize?.(resolved.label) ?? resolved.label;
+			if (options.styled === false) return `${resolved.key} ${label}`;
+			return `${theme.fg("accent", resolved.key)} ${theme.fg("dim", theme.italic(label))}`;
+		}
 	}
 	return undefined;
 }

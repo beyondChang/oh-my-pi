@@ -105,39 +105,41 @@ function settingsTabsNode(tabs: readonly Tab[], active: string | undefined): Nat
 }
 
 /** Footer hints for `mode`, mirroring the ANSI footer line. */
-function settingsHintsNode(mode: SettingsHintMode): NativeNode {
+function settingsHintsNode(mode: SettingsHintMode, localize?: (text: string) => string): NativeNode {
+	const translate = (label: string): string => localize?.(label) ?? label;
 	const confirmKeys: readonly KeyName[] = actionHint("tui.select.confirm", "")?.keys ?? [];
-	const close = actionHint("tui.select.cancel", "close");
-	const switchTabs: NativeHint = { keys: ["left", "right"], label: "switch tabs" };
+	const close = actionHint("tui.select.cancel", "");
+	const closeHint = close ? { ...close, label: translate("close") } : undefined;
+	const switchTabs: NativeHint = { keys: ["left", "right"], label: translate("switch tabs") };
 	let hints: (NativeHint | undefined)[];
 	switch (mode) {
 		case "search":
 			hints = [
-				actionHint("tui.select.confirm", "change"),
-				{ keys: ["tab"], label: "jump tabs" },
-				actionHint("tui.select.cancel", "exit search"),
+				actionHint("tui.select.confirm", translate("change")),
+				{ keys: ["tab"], label: translate("jump tabs") },
+				actionHint("tui.select.cancel", translate("exit search")),
 			];
 			break;
 		case "plugins":
-			hints = [{ keys: ["tab"], label: "switch tabs" }, close];
+			hints = [{ keys: ["tab"], label: translate("switch tabs") }, closeHint];
 			break;
 		case "sections":
 			hints = [
-				actionHint(["tui.select.up", "tui.select.down"], "jump sections"),
-				{ keys: ["tab", ...confirmKeys], label: "to settings" },
+				actionHint(["tui.select.up", "tui.select.down"], translate("jump sections")),
+				{ keys: ["tab", ...confirmKeys], label: translate("to settings") },
 				switchTabs,
-				close,
+				closeHint,
 			];
 			break;
 		case "rows":
 		case "rows-sections":
 			hints = [
-				{ keys: [...confirmKeys, "space"], label: "change" },
+				{ keys: [...confirmKeys, "space"], label: translate("change") },
 				...(mode === "rows-sections"
-					? [{ keys: ["tab"], label: "jump sections" } satisfies NativeHint, switchTabs]
-					: [{ keys: ["tab"], label: "switch tabs" } satisfies NativeHint]),
-				{ keys: [], label: "type to search" },
-				close,
+					? [{ keys: ["tab"], label: translate("jump sections") } satisfies NativeHint, switchTabs]
+					: [{ keys: ["tab"], label: translate("switch tabs") } satisfies NativeHint]),
+				{ keys: [], label: translate("type to search") },
+				closeHint,
 			];
 			break;
 	}
@@ -183,8 +185,8 @@ function createSettingsTextField(
 }
 
 /** An enum setting's values as choices, each labelled by its value. */
-function enumOptions(def: SettingDef & { type: "enum" }): SelectItem[] {
-	return def.values.map(value => ({ value, label: value }));
+function enumOptions(def: SettingDef & { type: "enum" }, localize?: (text: string) => string): SelectItem[] {
+	return def.values.map(value => ({ value, label: localize?.(value) ?? value }));
 }
 
 /**
@@ -204,6 +206,7 @@ function createSettingsSelectField(
 	footer?: Component,
 	requestRender?: () => void,
 	picker?: SelectPickerOptions,
+	localize?: (text: string) => string,
 ): SelectFormField {
 	return new SelectFormField({
 		theme: formTheme,
@@ -217,7 +220,7 @@ function createSettingsSelectField(
 		onSelectionChange,
 		onSubmit: onSelect,
 		onCancel,
-		hint: `  ${editorKey("tui.select.confirm")} to select · ${editorKey("tui.select.cancel")} to go back`,
+		hint: `  ${editorKey("tui.select.confirm")} ${localize?.("to select") ?? "to select"} · ${editorKey("tui.select.cancel")} ${localize?.("to go back") ?? "to go back"}`,
 		footer,
 		requestRender,
 		picker,
@@ -242,6 +245,7 @@ class MultiSelectSubmenu extends Container {
 	readonly #ordered: boolean;
 	readonly #onApply: (value: string[]) => void;
 	readonly #onClose: () => void;
+	readonly #localize: ((text: string) => string) | undefined;
 
 	constructor(
 		title: string,
@@ -251,8 +255,10 @@ class MultiSelectSubmenu extends Container {
 		ordered: boolean,
 		onApply: (value: string[]) => void,
 		onClose: () => void,
+		localize?: (text: string) => string,
 	) {
 		super();
+		this.#localize = localize;
 		this.#title = title;
 		this.#description = description;
 		this.#options = options;
@@ -284,7 +290,7 @@ class MultiSelectSubmenu extends Container {
 			this.#cursor = this.#options.findIndex(option => option.value === item.value);
 		};
 		this.#selectList.onCancel = this.#onClose;
-		const back = `${editorKey("tui.select.cancel")} to go back`;
+		const back = `${editorKey("tui.select.cancel")} ${this.#localize?.("to go back") ?? "to go back"}`;
 		const hint = this.#ordered
 			? `  Click to toggle · drag selected items to reorder · ${formatKeyHints(["left", "right"])} move · 1-9 place · ${back}`
 			: `  Click/${editorKey("tui.select.confirm")}/${formatKeyHint("space")} to toggle · ${back}`;
@@ -447,23 +453,36 @@ class ProviderLimitsSubmenu extends Container {
 			return {
 				value: provider,
 				label: provider,
-				description: limit === undefined ? "Unlimited" : `Limit: ${limit}`,
+				description:
+					limit === undefined
+						? (this.#settings.localize?.("Unlimited") ?? "Unlimited")
+						: `${this.#settings.localize?.("Limit:") ?? "Limit:"} ${limit}`,
 			};
 		});
 		const clearItem: SelectItem[] =
 			Object.keys(limits).length === 0
 				? []
-				: [{ value: "__clear_all", label: "Clear all limits", description: "Make every provider unlimited" }];
+				: [
+						{
+							value: "__clear_all",
+							label: this.#settings.localize?.("Clear all limits") ?? "Clear all limits",
+							description:
+								this.#settings.localize?.("Make every provider unlimited") ?? "Make every provider unlimited",
+						},
+					];
 		const items = [...providerItems, ...clearItem];
 		this.#listField = new SelectFormField({
 			theme: formTheme,
-			label: "Max In-Flight Requests",
+			label: this.#settings.localize?.("Max In-Flight Requests") ?? "Max In-Flight Requests",
 			description:
+				this.#settings.localize?.(
+					"Select a provider, enter a positive number to cap concurrent LLM requests, or clear it for unlimited.",
+				) ??
 				"Select a provider, enter a positive number to cap concurrent LLM requests, or clear it for unlimited.",
 			items,
 			maxVisible: 12,
 			selectTheme: getSelectListTheme(),
-			hint: `  ${editorKey("tui.select.confirm")} to edit provider · ${editorKey("tui.select.cancel")} to go back`,
+			hint: `  ${editorKey("tui.select.confirm")} ${this.#settings.localize?.("to edit provider") ?? "to edit provider"} · ${editorKey("tui.select.cancel")} ${this.#settings.localize?.("to go back") ?? "to go back"}`,
 			onSubmit: value => {
 				if (value === "__clear_all") {
 					this.#settings.set("providers.maxInFlightRequests", {});
@@ -487,16 +506,21 @@ class ProviderLimitsSubmenu extends Container {
 		this.addChild(
 			new TextFormField({
 				theme: formTheme,
-				label: `Max In-Flight Requests: ${provider}`,
+				label: `${this.#settings.localize?.("Max In-Flight Requests:") ?? "Max In-Flight Requests:"} ${provider}`,
 				description:
-					"Enter a positive number. Decimals round down. Clear the field to make this provider unlimited.",
+					this.#settings.localize?.(
+						"Enter a positive number. Decimals round down. Clear the field to make this provider unlimited.",
+					) ?? "Enter a positive number. Decimals round down. Clear the field to make this provider unlimited.",
 				initialValue: limits[provider]?.toString() ?? undefined,
 				empty: "submit",
-				hint: `  ${editorKey("tui.input.submit")} to save · ${editorKey("tui.select.cancel")} to cancel · Clear field to unset`,
+				hint: `  ${editorKey("tui.input.submit")} ${this.#settings.localize?.("to save") ?? "to save"} · ${editorKey("tui.select.cancel")} ${this.#settings.localize?.("to cancel") ?? "to cancel"} · ${this.#settings.localize?.("Clear field to unset") ?? "Clear field to unset"}`,
 				validate: value => {
 					if (value.trim() === "") return undefined;
 					const limit = Number(value.trim());
-					if (!Number.isFinite(limit) || limit <= 0) return "Limit must be a positive number.";
+					if (!Number.isFinite(limit) || limit <= 0)
+						return (
+							this.#settings.localize?.("Limit must be a positive number.") ?? "Limit must be a positive number."
+						);
 					return undefined;
 				},
 				onSubmit: value => {
@@ -506,7 +530,11 @@ class ProviderLimitsSubmenu extends Container {
 						delete next[provider];
 					} else {
 						const limit = Number(trimmed);
-						if (!Number.isFinite(limit) || limit <= 0) throw new Error("Limit must be a positive number.");
+						if (!Number.isFinite(limit) || limit <= 0)
+							throw new Error(
+								this.#settings.localize?.("Limit must be a positive number.") ??
+									"Limit must be a positive number.",
+							);
 						next[provider] = Math.max(1, Math.floor(limit));
 					}
 					const normalized = this.#settings.validateProviderLimits(next);
@@ -538,24 +566,28 @@ class ProviderLimitsSubmenu extends Container {
 }
 
 /** Stable sidebar width derived from the host's complete schema. */
-function settingsSidebarWidth(entries: readonly SettingsDisplayEntry[]): number {
+function settingsSidebarWidth(entries: readonly SettingsDisplayEntry[], localize?: (text: string) => string): number {
 	let nameWidth = 0;
 	for (const tab of SETTING_TABS) {
-		for (const def of getSettingsForTab(entries, tab)) {
-			if (def.group) nameWidth = Math.max(nameWidth, visibleWidth(def.group));
+		for (const def of getSettingsForTab(entries, tab, localize)) {
+			if (def.displayGroup) nameWidth = Math.max(nameWidth, visibleWidth(def.displayGroup));
 		}
 	}
 	return Math.min(22, nameWidth) + 4;
 }
 
-function getSettingsTabs(): Tab[] {
+function getSettingsTabs(localize?: (text: string) => string): Tab[] {
 	return [
 		...SETTING_TABS.map(id => {
 			const meta = TAB_METADATA[id];
 			const icon = theme.symbol(meta.icon);
 			return { id, label: `${icon} ${meta.label}`, short: icon };
 		}),
-		{ id: "plugins", label: `${theme.icon.package} Plugins`, short: theme.icon.package },
+		{
+			id: "plugins",
+			label: `${theme.icon.package} ${localize?.("Plugins") ?? "Plugins"}`,
+			short: theme.icon.package,
+		},
 	];
 }
 
@@ -656,10 +688,10 @@ export class SettingsSelectorComponent implements Component {
 	constructor(context: SettingsRuntimeContext, callbacks: SettingsCallbacks) {
 		this.#context = context;
 		this.#callbacks = callbacks;
-		this.#sidebarWidth = settingsSidebarWidth(context.settings.entries);
+		this.#sidebarWidth = settingsSidebarWidth(context.settings.entries, context.settings.localize);
 		// No label prefix (the frame title already says Settings) and no
 		// "(tab to cycle)" hint (folded into the footer hint line).
-		const tabs = getSettingsTabs();
+		const tabs = getSettingsTabs(context.settings.localize);
 		this.#tabs = tabs;
 		this.#tabBar = new TabBar("", tabs, getTabBarTheme());
 		this.#tabBar.showHint = false;
@@ -705,21 +737,24 @@ export class SettingsSelectorComponent implements Component {
 	}
 
 	#footerHintText(): string {
+		const localize = this.#context.settings.localize ?? ((text: string) => text);
 		const confirm = editorKey("tui.select.confirm");
 		const cancel = editorKey("tui.select.cancel");
 		const tab = formatKeyHint("tab");
-		const switchTabs = `${formatKeyHints(["left", "right"])} to switch tabs`;
+		const switchTabs = `${formatKeyHints(["left", "right"])} ${localize("to switch tabs")}`;
 		if (this.#searchList) {
-			return `${confirm} to change · ${tab} to jump tabs · ${cancel} to exit search`;
+			return `${confirm} ${localize("to change")} · ${tab} ${localize("to jump tabs")} · ${cancel} ${localize("to exit search")}`;
 		}
 		if (this.#currentTabId === "plugins") {
-			return `${tab} to switch tabs · ${cancel} to close`;
+			return `${tab} ${localize("to switch tabs")} · ${cancel} ${localize("to close")}`;
 		}
 		if (this.#currentList?.sectionFocused) {
-			return `${editorKeys("tui.select.up", "tui.select.down")} to jump sections · ${tab}/${confirm} to settings · ${switchTabs} · ${cancel} to close`;
+			return `${editorKeys("tui.select.up", "tui.select.down")} ${localize("to jump sections")} · ${tab}/${confirm} ${localize("to settings")} · ${switchTabs} · ${cancel} ${localize("to close")}`;
 		}
-		const nav = this.#hasSectionJump ? `${tab} to jump sections · ${switchTabs}` : `${tab} to switch tabs`;
-		return `${confirm}/${formatKeyHint("space")} to change · ${nav} · Type to search · ${cancel} to close`;
+		const nav = this.#hasSectionJump
+			? `${tab} ${localize("to jump sections")} · ${switchTabs}`
+			: `${tab} ${localize("to switch tabs")}`;
+		return `${confirm}/${formatKeyHint("space")} ${localize("to change")} · ${nav} · ${localize("Type to search")} · ${cancel} ${localize("to close")}`;
 	}
 
 	/** Single-line search banner: accent icon, editable query with live cursor, right-aligned match count. */
@@ -747,7 +782,13 @@ export class SettingsSelectorComponent implements Component {
 		const tabLines = this.#tabBar.render(innerWidth);
 		const searching = this.#searchList !== null;
 		const showPreview = !searching && this.#currentTabId === "appearance";
-		const previewLines = showPreview ? ["", theme.fg("muted", "Preview:"), this.#getStatusPreviewString()] : [];
+		const previewLines = showPreview
+			? [
+					"",
+					theme.fg("muted", this.#context.settings.localize?.("Preview:") ?? "Preview:"),
+					this.#getStatusPreviewString(),
+				]
+			: [];
 
 		// Fixed chrome: top border, tabs, divider, [search row], divider, hint, bottom border.
 		const fixedRows = 1 + tabLines.length + 1 + (searching ? 1 : 0) + 1 + 1 + 1;
@@ -766,7 +807,7 @@ export class SettingsSelectorComponent implements Component {
 		}
 
 		const out: string[] = [];
-		out.push(topBorder(width, "Settings"));
+		out.push(topBorder(width, this.#context.settings.localize?.("Settings") ?? "Settings"));
 		this.#tabRowStart = out.length;
 		this.#tabRowCount = tabLines.length;
 		for (const line of tabLines) {
@@ -828,7 +869,12 @@ export class SettingsSelectorComponent implements Component {
 			const changed = this.#changedCount(id);
 			return { id, label: TAB_METADATA[id].label, icon: id, changed: changed > 0 ? changed : undefined };
 		});
-		pages.push({ id: PLUGINS_PAGE, label: "Installed", icon: "plugins", group: "Plugins" });
+		pages.push({
+			id: PLUGINS_PAGE,
+			label: this.#context.settings.localize?.("Installed") ?? "Installed",
+			icon: "plugins",
+			group: this.#context.settings.localize?.("Plugins") ?? "Plugins",
+		});
 
 		let sections: TspPrefsProps["sections"] = [];
 		let focus: string | null = null;
@@ -842,10 +888,11 @@ export class SettingsSelectorComponent implements Component {
 		} else if (list) {
 			sections = list.prefsSections(
 				item => {
-					const def = getSettingDef(entries, item.id);
+					const def = getSettingDef(entries, item.id, this.#context.settings.localize);
 					const group = def?.group ?? "General";
+					const title = def?.displayGroup ?? group;
 					const id = prefsSectionId(group);
-					return searching && def ? { id: `${def.tab}/${id}`, title: group, page: def.tab } : { id, title: group };
+					return searching && def ? { id: `${def.tab}/${id}`, title, page: def.tab } : { id, title };
 				},
 				item => this.#prefsControl(item.id, item.currentValue),
 			);
@@ -907,7 +954,7 @@ export class SettingsSelectorComponent implements Component {
 		const cached = this.#changedCounts.get(tab);
 		if (cached !== undefined) return cached;
 		let count = 0;
-		for (const def of getSettingsForTab(this.#context.settings.entries, tab)) {
+		for (const def of getSettingsForTab(this.#context.settings.entries, tab, this.#context.settings.localize)) {
 			if (def.condition && !def.condition()) continue;
 			if (this.#isChanged(def, this.#getCurrentValue(def))) count++;
 		}
@@ -917,13 +964,13 @@ export class SettingsSelectorComponent implements Component {
 
 	/** Whether row `id`'s choices fit its popup menu (else the submenu opens as a picker over the page). */
 	#inlineMenu(id: string): boolean {
-		const def = getSettingDef(this.#context.settings.entries, id);
+		const def = getSettingDef(this.#context.settings.entries, id, this.#context.settings.localize);
 		return def?.type !== "submenu" || this.#submenuOptions(def).length <= PREFS_MENU_MAX;
 	}
 
 	/** Setting `id`'s typed control for the native page; `shown` is the list's display value. */
 	#prefsControl(id: string, shown: string): TspPrefsControl | undefined {
-		const def = getSettingDef(this.#context.settings.entries, id);
+		const def = getSettingDef(this.#context.settings.entries, id, this.#context.settings.localize);
 		if (!def) return undefined;
 		const value = this.#getCurrentValue(def);
 		switch (def.type) {
@@ -1061,7 +1108,7 @@ export class SettingsSelectorComponent implements Component {
 		id: string,
 		value: boolean | number | string | readonly string[] | null,
 	): void {
-		const def = getSettingDef(this.#context.settings.entries, id);
+		const def = getSettingDef(this.#context.settings.entries, id, this.#context.settings.localize);
 		if (!def) return;
 		if (value === null) {
 			if (list.openSubmenu) list.handleInput(ESCAPE);
@@ -1132,7 +1179,9 @@ export class SettingsSelectorComponent implements Component {
 			this.#searchCorpora = null;
 			this.#setSearchQuery(this.#searchQuery);
 		} else if (this.#currentTabId !== "plugins")
-			this.#refreshCurrentTabItems(getSettingsForTab(this.#context.settings.entries, this.#currentTabId));
+			this.#refreshCurrentTabItems(
+				getSettingsForTab(this.#context.settings.entries, this.#currentTabId, this.#context.settings.localize),
+			);
 	}
 
 	/**
@@ -1185,7 +1234,7 @@ export class SettingsSelectorComponent implements Component {
 						"col",
 						{ gap: "xs" },
 						[
-							text([span("Preview:", "muted")]),
+							text([span(this.#context.settings.localize?.("Preview:") ?? "Preview:", "muted")]),
 							this.#callbacks.describeStatusLinePreview?.() ??
 								text(styledSpans(source), { wrap: "none", truncate: "end" }),
 						],
@@ -1205,11 +1254,15 @@ export class SettingsSelectorComponent implements Component {
 					: this.#hasSectionJump
 						? "rows-sections"
 						: "rows";
-		memo.hints[mode] ??= settingsHintsNode(mode);
+		memo.hints[mode] ??= settingsHintsNode(mode, this.#context.settings.localize);
 		children.push(memo.hints[mode]);
 
 		if (memo.root && sameItems(memo.root.children, children)) return memo.root.node;
-		const root = overlayCard("omp.overlay.settings", "Settings", children);
+		const root = overlayCard(
+			"omp.overlay.settings",
+			this.#context.settings.localize?.("Settings") ?? "Settings",
+			children,
+		);
 		memo.root = { children, node: root };
 		return root;
 	}
@@ -1313,7 +1366,7 @@ export class SettingsSelectorComponent implements Component {
 			{
 				layout: "flat",
 				typeToSearch: false,
-				emptyText: "No matching settings",
+				emptyText: this.#context.settings.localize?.("No matching settings") ?? "No matching settings",
 				hint: "",
 			},
 		);
@@ -1346,7 +1399,7 @@ export class SettingsSelectorComponent implements Component {
 		let total = 0;
 		this.#searchCorpora ??= SETTING_TABS.map(tab => {
 			const candidates: SettingItem[] = [];
-			for (const def of getSettingsForTab(this.#context.settings.entries, tab)) {
+			for (const def of getSettingsForTab(this.#context.settings.entries, tab, this.#context.settings.localize)) {
 				const item = this.#defToItem(def);
 				if (item) candidates.push(item);
 			}
@@ -1398,14 +1451,16 @@ export class SettingsSelectorComponent implements Component {
 	#endSearch(jumpToSelection: boolean): void {
 		if (!this.#searchList) return;
 		const selected = jumpToSelection ? this.#searchList.getSelectedItem() : undefined;
-		const selectedDef = selected ? getSettingDef(this.#context.settings.entries, selected.id) : undefined;
+		const selectedDef = selected
+			? getSettingDef(this.#context.settings.entries, selected.id, this.#context.settings.localize)
+			: undefined;
 		const targetTab: SettingTab | "plugins" = selectedDef?.tab ?? this.#preSearchTabId;
 
 		this.#searchQuery = "";
 		this.#searchCorpora = null;
 		this.#searchFirstMatch.clear();
 		this.#searchMatchCount = 0;
-		this.#tabs = getSettingsTabs();
+		this.#tabs = getSettingsTabs(this.#context.settings.localize);
 		this.#tabBar.setTabs(this.#tabs, targetTab);
 		this.#switchToTab(targetTab);
 		if (selectedDef) {
@@ -1435,7 +1490,7 @@ export class SettingsSelectorComponent implements Component {
 		// Plugins hosts its own UI; it is not part of the schema-backed search.
 		empty.push({
 			id: "plugins",
-			label: `${theme.icon.package} Plugins`,
+			label: `${theme.icon.package} ${this.#context.settings.localize?.("Plugins") ?? "Plugins"}`,
 			short: theme.icon.package,
 			muted: true,
 		});
@@ -1444,13 +1499,13 @@ export class SettingsSelectorComponent implements Component {
 
 	#syncTabBarToSelection(item: SettingItem | undefined): void {
 		if (!this.#searchList || !item) return;
-		const def = getSettingDef(this.#context.settings.entries, item.id);
+		const def = getSettingDef(this.#context.settings.entries, item.id, this.#context.settings.localize);
 		if (def) this.#tabBar.setActiveById(def.tab);
 	}
 
 	/** Value-change dispatch for the search result list (any tab's setting). */
 	#onSearchSettingChange(path: string, newValue: string): void {
-		const def = getSettingDef(this.#context.settings.entries, path);
+		const def = getSettingDef(this.#context.settings.entries, path, this.#context.settings.localize);
 		if (!def) return;
 		if (def.type === "boolean") {
 			const boolValue = newValue === "true";
@@ -1481,6 +1536,11 @@ export class SettingsSelectorComponent implements Component {
 
 		const currentValue = this.#getCurrentValue(def);
 		const changed = this.#isChanged(def, currentValue);
+		const localize = this.#context.settings.localize ?? ((text: string) => text);
+		const displayValue = (value: string): string | undefined => {
+			const label = localize(value);
+			return label === value ? undefined : label;
+		};
 		const item = {
 			id: def.path,
 			label: def.label,
@@ -1491,46 +1551,81 @@ export class SettingsSelectorComponent implements Component {
 		};
 
 		switch (def.type) {
-			case "boolean":
-				return { ...item, currentValue: currentValue ? "true" : "false", values: ["true", "false"] };
+			case "boolean": {
+				const raw = currentValue ? "true" : "false";
+				return { ...item, currentValue: raw, currentValueLabel: displayValue(raw), values: ["true", "false"] };
+			}
 
-			case "enum":
+			case "enum": {
+				const raw = String(currentValue ?? "");
 				return {
 					...item,
-					currentValue: String(currentValue ?? ""),
+					currentValue: raw,
+					currentValueLabel: displayValue(raw),
 					values: [...def.values],
 					menu: (cv, done) =>
-						createSettingsSelectField(def.label, def.description, enumOptions(def), cv, done, () => done()),
+						createSettingsSelectField(def.label, def.description, enumOptions(def, localize), cv, done, () =>
+							done(),
+						),
 				};
+			}
 
-			case "submenu":
+			case "submenu": {
+				const raw = this.#getSubmenuCurrentValue(def.path, currentValue);
 				return {
 					...item,
-					currentValue: this.#getSubmenuCurrentValue(def.path, currentValue),
+					currentValue: raw,
+					currentValueLabel: this.#localizedSubmenuLabel(def, currentValue, raw, localize),
 					submenu: (cv, done) => this.#createSubmenu(def, cv, done),
 				};
+			}
 
-			case "text":
+			case "text": {
+				const raw = this.#formatTextInputValue(def, currentValue);
 				return {
 					...item,
-					currentValue: this.#formatTextInputValue(def, currentValue),
+					currentValue: raw,
+					currentValueLabel: displayValue(raw),
 					submenu: (cv, done) => this.#createTextInput(def, cv, done),
 				};
+			}
 
-			case "providerLimits":
+			case "providerLimits": {
+				const raw = this.#formatProviderLimitsValue(currentValue);
 				return {
 					...item,
-					currentValue: this.#formatProviderLimitsValue(currentValue),
+					currentValue: raw,
+					currentValueLabel: displayValue(raw),
 					submenu: (_cv, done) => this.#createProviderLimitsInput(done),
 				};
+			}
 
-			case "multiselect":
+			case "multiselect": {
+				const raw = this.#formatMultiSelectValue(def, currentValue);
 				return {
 					...item,
-					currentValue: this.#formatMultiSelectValue(def, currentValue),
+					currentValue: raw,
+					currentValueLabel: displayValue(raw),
 					submenu: (_cv, done) => this.#createMultiSelect(def, done),
 				};
+			}
 		}
+	}
+
+	/** Resolve a submenu's translated display label while retaining the raw config value. */
+	#localizedSubmenuLabel(
+		def: SettingDef & { type: "submenu" },
+		value: unknown,
+		fallback: string,
+		localize: (text: string) => string,
+	): string | undefined {
+		const option = this.#submenuOptions(def).find(candidate => candidate.value === String(value ?? ""));
+		if (!option) {
+			const original = String(value ?? fallback);
+			const label = localize(original);
+			return label === original ? undefined : label;
+		}
+		return option.label === option.value ? undefined : option.label;
 	}
 
 	/**
@@ -1676,6 +1771,7 @@ export class SettingsSelectorComponent implements Component {
 			footer,
 			this.#context.requestRender,
 			isThemeSetting ? themePickerOptions(def.label, String(currentValue)) : undefined,
+			this.#context.settings.localize,
 		);
 	}
 
@@ -1726,7 +1822,7 @@ export class SettingsSelectorComponent implements Component {
 	#formatProviderLimitsValue(value: unknown): string {
 		const limits = this.#context.settings.normalizeProviderLimits(value);
 		const entries = Object.entries(limits).sort(([a], [b]) => a.localeCompare(b));
-		if (entries.length === 0) return "Unlimited";
+		if (entries.length === 0) return this.#context.settings.localize?.("Unlimited") ?? "Unlimited";
 		return entries.map(([provider, limit]) => `${provider}: ${limit}`).join(", ");
 	}
 
@@ -1746,6 +1842,7 @@ export class SettingsSelectorComponent implements Component {
 				this.#callbacks.onChange(def.path, value);
 			},
 			() => done(this.#formatMultiSelectValue(def, this.#context.settings.get(def.path))),
+			this.#context.settings.localize,
 		);
 	}
 
@@ -1778,7 +1875,11 @@ export class SettingsSelectorComponent implements Component {
 	 */
 	#setSettingValue(path: string, value: string): void {
 		const currentValue = this.#context.settings.get(path);
-		const schemaType = getSettingDef(this.#context.settings.entries, path)?.schemaType;
+		const schemaType = getSettingDef(
+			this.#context.settings.entries,
+			path,
+			this.#context.settings.localize,
+		)?.schemaType;
 		if (path === "compaction.thresholdPercent" && value === "default") {
 			this.#context.settings.set(path, -1);
 		} else if (path === "compaction.thresholdTokens" && value === "default") {
@@ -1819,7 +1920,7 @@ export class SettingsSelectorComponent implements Component {
 	 * Show a settings tab using definitions.
 	 */
 	#showSettingsTab(tabId: SettingTab): void {
-		const defs = getSettingsForTab(this.#context.settings.entries, tabId);
+		const defs = getSettingsForTab(this.#context.settings.entries, tabId, this.#context.settings.localize);
 
 		const items = this.#buildItemsForDefs(defs);
 		// Mirror SettingsList's section detection (leading ungrouped items form
@@ -1877,7 +1978,12 @@ export class SettingsSelectorComponent implements Component {
 			const item = this.#defToItem(def);
 			if (!item) continue;
 			if (def.group && def.group !== lastGroup) {
-				items.push({ id: `__heading:${def.group}`, label: def.group, currentValue: "", heading: true });
+				items.push({
+					id: `__heading:${def.group}`,
+					label: def.displayGroup ?? def.group,
+					currentValue: "",
+					heading: true,
+				});
 				lastGroup = def.group;
 			}
 			items.push(item);
@@ -1921,6 +2027,7 @@ export class SettingsSelectorComponent implements Component {
 			onClose: () => this.#callbacks.onCancel(),
 			onPluginChanged: () => this.#callbacks.onPluginsChanged?.(),
 			requestRender: this.#context.requestRender,
+			localize: this.#context.settings.localize,
 		});
 	}
 

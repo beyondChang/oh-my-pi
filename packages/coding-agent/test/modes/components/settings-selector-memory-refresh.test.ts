@@ -1,3 +1,4 @@
+import { initializeLanguage } from "@oh-my-pi/pi-coding-agent/i18n";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import { resetSettingsForTest, Settings, settings } from "@oh-my-pi/pi-coding-agent/config/settings";
 import { loadHindsightConfig } from "@oh-my-pi/pi-coding-agent/hindsight/config";
@@ -18,6 +19,8 @@ let geometryStub: { restore(): void } | undefined;
 beforeEach(async () => {
 	resetSettingsForTest();
 	await Settings.init({ inMemory: true });
+	// The language setting defaults to Simplified Chinese; these panels are asserted in English.
+	initializeLanguage("en");
 	geometryStub = stubStdoutGeometry(120);
 });
 

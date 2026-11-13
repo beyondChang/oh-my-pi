@@ -9,6 +9,7 @@ import { StatusNotice } from "@oh-my-pi/pi-tui/chrome/status-notice";
 import { QueuedMessagesBand } from "@oh-my-pi/pi-tui/prompt/queued-messages";
 import { previewLine, TRUNCATE_LENGTHS } from "@oh-my-pi/pi-tui/render/render-utils";
 import { logger } from "@oh-my-pi/pi-utils";
+import { localizeUiText } from "../../i18n";
 import type { AdvisorMessageDetails } from "../../advisor";
 import { InternalUrlRouter } from "../../internal-urls";
 import { COLLAB_PROMPT_MESSAGE_TYPE, type CollabPromptDetails } from "../../collab/protocol";
@@ -261,6 +262,7 @@ export class UiHelpers {
 	 * nothing to a native terminal, so its expired toast would never show again.
 	 */
 	showStatus(message: string, options?: ShowStatusOptions): void {
+		message = localizeUiText(message);
 		const children = this.ctx.chatContainer.children;
 		const last = children.length > 0 ? children[children.length - 1] : undefined;
 		const useDim = options?.dim ?? true;
@@ -1296,23 +1298,23 @@ export class UiHelpers {
 	}
 
 	showError(errorMessage: string): void {
-		this.ctx.present(TranscriptNotice.line("error", errorMessage));
+		this.ctx.present(TranscriptNotice.line("error", localizeUiText(errorMessage)));
 	}
 
 	showWarning(warningMessage: string, options?: { hideWithToolActivity?: boolean }): void {
-		const notice = TranscriptNotice.line("warning", warningMessage);
+		const notice = TranscriptNotice.line("warning", localizeUiText(warningMessage));
 		this.ctx.present(options?.hideWithToolActivity ? new ToolActivityContainer(notice) : notice);
 	}
 
 	showNewVersionNotification(newVersion: string): void {
-		const title = "Update Available";
-		const prefix = `New version ${newVersion} is available. Run: `;
+		const title = localizeUiText("Update Available");
+		const prefix = `${localizeUiText("New version")} ${newVersion} ${localizeUiText("is available. Run:")} `;
 		const command = "omp update";
 		const native = noticeRow(
 			"info",
 			[
-				span("Update available", "strong"),
-				span(` · New version ${newVersion} is available. Run `),
+				span(localizeUiText("Update available"), "strong"),
+				span(` · ${localizeUiText("New version")} ${newVersion} ${localizeUiText("is available. Run:")} `),
 				span(command, "code"),
 			],
 			{ icon: "download" },

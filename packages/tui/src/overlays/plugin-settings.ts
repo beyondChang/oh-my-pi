@@ -31,7 +31,8 @@ import { actionHint, hintsRow, overlayCard } from "../native/overlay";
 
 const PLUGIN_SETTINGS_ROLE = "omp.overlay.plugin-settings";
 /** A plugin row's control on the native settings page: open the plugin's settings. */
-const PLUGIN_CONFIGURE: TspPrefsControl = { k: "action", label: "Configure", act: "open" };
+const PLUGIN_CONFIGURE_LABEL = "Configure";
+const PLUGIN_CONFIGURE: TspPrefsControl = { k: "action", label: PLUGIN_CONFIGURE_LABEL, act: "open" };
 
 /** The plugins tab as a native settings page draws it (the settings selector puts it in its `prefs` node). */
 export interface PluginPrefsPage {
@@ -193,6 +194,8 @@ export interface PluginListCallbacks {
 	onNpmSelect: (plugin: InstalledPlugin) => void;
 	onMarketplaceSelect: (plugin: InstalledPluginSummary) => void;
 	onCancel: () => void;
+	/** Display-only translation for stable UI text; identity when English is active. */
+	localize?: (text: string) => string;
 }
 
 /**
@@ -208,7 +211,9 @@ async function buildPluginConfigItems(
 	manager: PluginSettingsManager,
 	onConfigChange: (key: string, value: unknown) => void | Promise<void>,
 	requestRender?: () => void,
+	localize?: (text: string) => string,
 ): Promise<SettingItem[]> {
+	const tr = (text: string): string => localize?.(text) ?? text;
 	const schemaSettings = plugin.manifest.settings;
 	if (!schemaSettings) return [];
 
@@ -217,13 +222,13 @@ async function buildPluginConfigItems(
 	for (const key in schemaSettings) {
 		const schema = schemaSettings[key];
 		const currentValue = settings[key] ?? schema.default;
-		const displayValue = schema.secret && currentValue ? "••••••••" : String(currentValue ?? "(not set)");
+		const displayValue = schema.secret && currentValue ? "••••••••" : String(currentValue ?? tr("(not set)"));
 
 		if (schema.type === "boolean") {
 			items.push({
 				id: `config:${key}`,
-				label: `  ${key}`,
-				description: schema.description || `Configure ${key}`,
+				label: `  ${tr(key)}`,
+				description: schema.description || tr(`Configure ${key}`),
 				currentValue: currentValue ? "true" : "false",
 				values: ["true", "false"],
 			});
@@ -296,20 +301,39 @@ function findEntryByValue(entries: ReadonlyArray<PluginListEntry>, value: string
 export class PluginListComponent extends OverlayPanel {
 	readonly #selectList: SelectList;
 	#native: NativeNode | undefined;
+	readonly #callbacks: PluginListCallbacks;
+	readonly #localize: ((text: string) => string) | undefined;
+
+	#tr(text: string): string {
+		return this.#localize?.(text) ?? text;
+	}
+
+	#configureControl(): TspPrefsControl {
+		return { k: "action", label: this.#tr(PLUGIN_CONFIGURE_LABEL), act: "open" };
+	}
 
 	constructor(
 		private readonly entries: ReadonlyArray<PluginListEntry>,
 		callbacks: PluginListCallbacks,
+		localize?: (text: string) => string,
 	) {
-		super("Plugins", PLUGIN_SETTINGS_ROLE);
+		super(localize?.("Plugins") ?? "Plugins", PLUGIN_SETTINGS_ROLE);
+		this.#callbacks = callbacks;
+		this.#localize = localize;
 		this.addChild(new Spacer(1));
 
 		if (entries.length === 0) {
-			this.addChild(new Text(theme.fg("muted", "No plugins installed"), 0, 0));
+			this.addChild(new Text(theme.fg("muted", this.#tr("No plugins installed")), 0, 0));
 			this.addChild(new Spacer(1));
-			this.addChild(new Text(theme.fg("dim", "Install npm plugins:        omp plugin install <package>"), 0, 0));
 			this.addChild(
-				new Text(theme.fg("dim", "Install marketplace plugins: omp plugin install <name>@<marketplace>"), 0, 0),
+				new Text(theme.fg("dim", `${this.#tr("Install npm plugins:")}        omp plugin install <package>`), 0, 0),
+			);
+			this.addChild(
+				new Text(
+					theme.fg("dim", `${this.#tr("Install marketplace plugins:")} omp plugin install <name>@<marketplace>`),
+					0,
+					0,
+				),
 			);
 			this.addChild(new Spacer(1));
 
@@ -344,7 +368,7 @@ export class PluginListComponent extends OverlayPanel {
 			new Text(
 				theme.fg(
 					"dim",
-					`${editorKey("tui.select.confirm")} to configure · ${editorKey("tui.select.cancel")} to go back`,
+					`${editorKey("tui.select.confirm")} ${this.#tr("to configure")} · ${editorKey("tui.select.cancel")} ${this.#tr("to go back")}`,
 				),
 				0,
 				0,
@@ -361,7 +385,7 @@ export class PluginListComponent extends OverlayPanel {
 				const features = p.manifest.features ? Object.keys(p.manifest.features).length : 0;
 				const parts = [p.enabled ? "Enabled" : "Disabled", "npm", `v${p.version}`];
 				if (features > 0) parts.push(`${p.enabledFeatures?.length ?? features}/${features} features`);
-				return { id, label: p.name, hint: parts.join(" · "), control: PLUGIN_CONFIGURE };
+				return { id, label: p.name, hint: parts.join(" · "), control: this.#configureControl() };
 			}
 			const s = entry.plugin;
 			const parts = [marketplaceEnabled(s) ? "Enabled" : "Disabled", "marketplace", s.scope];
@@ -371,14 +395,18 @@ export class PluginListComponent extends OverlayPanel {
 				label: s.id,
 				hint: parts.join(" · "),
 				warning: s.shadowedBy ? `Shadowed by the ${s.shadowedBy} install` : undefined,
-				control: PLUGIN_CONFIGURE,
+				control: this.#configureControl(),
 			};
 		});
 		return {
 			lead:
 				rows.length > 0
-					? "Plugins installed for you and this project. Configure one to turn it or its features on and off."
-					: "No plugins installed. Install one with omp plugin install <package>, or <name>@<marketplace>.",
+					? this.#tr(
+							"Plugins installed for you and this project. Configure one to turn it or its features on and off.",
+						)
+					: this.#tr(
+							"No plugins installed. Install one with omp plugin install <package>, or <name>@<marketplace>.",
+						),
 			sections: rows.length > 0 ? [{ id: "installed", title: "Installed", rows }] : [],
 			focus: this.#selectList.getSelectedItem()?.value ?? null,
 			editing: null,
@@ -400,21 +428,24 @@ export class PluginListComponent extends OverlayPanel {
 		const body =
 			this.entries.length === 0
 				? [
-						text([span("No plugins installed", "muted")]),
+						text([span(this.#tr("No plugins installed"), "muted")]),
 						node("kv", {
 							items: [
-								{ k: "Install npm plugins", v: [span("omp plugin install <package>", "code")] },
+								{ k: this.#tr("Install npm plugins:"), v: [span("omp plugin install <package>", "code")] },
 								{
-									k: "Install marketplace plugins",
+									k: this.#tr("Install marketplace plugins:"),
 									v: [span("omp plugin install <name>@<marketplace>", "code")],
 								},
 							],
 						}),
-						hintsRow([actionHint("tui.select.cancel", "go back")]),
+						hintsRow([actionHint("tui.select.cancel", this.#tr("go back"))]),
 					]
 				: [
 						this.#selectList,
-						hintsRow([actionHint("tui.select.confirm", "configure"), actionHint("tui.select.cancel", "go back")]),
+						hintsRow([
+							actionHint("tui.select.confirm", this.#tr("configure")),
+							actionHint("tui.select.cancel", this.#tr("go back")),
+						]),
 					];
 		this.#native = overlayCard(PLUGIN_SETTINGS_ROLE, this.title, body);
 		return this.#native;
@@ -478,6 +509,8 @@ export interface PluginDetailCallbacks {
 	/** Schedules a frame after an asynchronous config submission settles. */
 	requestRender?: () => void;
 	onBack: () => void;
+	/** Display-only translation for stable UI text; identity when English is active. */
+	localize?: (text: string) => string;
 }
 
 /**
@@ -488,6 +521,11 @@ export interface PluginDetailCallbacks {
  */
 export class PluginDetailComponent extends OverlayPanel {
 	#settingsList!: SettingsFormField;
+	readonly #localize: ((text: string) => string) | undefined;
+
+	#tr(text: string): string {
+		return this.#localize?.(text) ?? text;
+	}
 
 	constructor(
 		private plugin: InstalledPlugin,
@@ -495,6 +533,7 @@ export class PluginDetailComponent extends OverlayPanel {
 		private readonly callbacks: PluginDetailCallbacks,
 	) {
 		super(plugin.name, PLUGIN_SETTINGS_ROLE);
+		this.#localize = callbacks.localize;
 
 		void this.#rebuild();
 	}
@@ -512,8 +551,8 @@ export class PluginDetailComponent extends OverlayPanel {
 		// Enable/disable toggle
 		items.push({
 			id: "__enabled__",
-			label: "Enabled",
-			description: "Enable or disable this plugin",
+			label: this.#tr("Enabled"),
+			description: this.#tr("Enable or disable this plugin"),
 			currentValue: plugin.enabled ? "true" : "false",
 			values: ["true", "false"],
 		});
@@ -533,7 +572,7 @@ export class PluginDetailComponent extends OverlayPanel {
 				items.push({
 					id: `feature:${featName}`,
 					label: `  ${featName}`,
-					description: feat.description || `Enable ${featName} feature`,
+					description: feat.description || this.#tr(`Enable ${featName} feature`),
 					currentValue: isEnabled ? "true" : "false",
 					values: ["true", "false"],
 				});
@@ -546,6 +585,7 @@ export class PluginDetailComponent extends OverlayPanel {
 				this.manager,
 				this.callbacks.onConfigChange,
 				this.callbacks.requestRender,
+				this.callbacks.localize,
 			)),
 		);
 
@@ -555,7 +595,7 @@ export class PluginDetailComponent extends OverlayPanel {
 			items,
 			maxVisible: Math.min(items.length, 10),
 			settingsTheme: getSettingsListTheme(),
-			hint: `${editorKey("tui.select.confirm")} to edit · ${editorKey("tui.select.cancel")} to go back`,
+			hint: `${editorKey("tui.select.confirm")} ${this.#tr("to edit")} · ${editorKey("tui.select.cancel")} ${this.#tr("to go back")}`,
 			onChange: (id, newValue) => {
 				if (id === "__enabled__") {
 					this.callbacks.onEnabledChange(newValue === "true");
@@ -616,6 +656,8 @@ export interface MarketplacePluginDetailCallbacks {
 	/** Schedules a TUI frame after asynchronous manifest settings load. */
 	requestRender?: () => void;
 	onBack: () => void;
+	/** Display-only translation for stable UI text; identity when English is active. */
+	localize?: (text: string) => string;
 }
 
 /**
@@ -624,6 +666,11 @@ export interface MarketplacePluginDetailCallbacks {
  */
 export class MarketplacePluginDetailComponent extends OverlayPanel {
 	#settingsList!: SettingsFormField;
+	readonly #localize: ((text: string) => string) | undefined;
+
+	#tr(text: string): string {
+		return this.#localize?.(text) ?? text;
+	}
 
 	constructor(
 		private plugin: InstalledPluginSummary,
@@ -631,6 +678,7 @@ export class MarketplacePluginDetailComponent extends OverlayPanel {
 		private readonly callbacks: MarketplacePluginDetailCallbacks,
 	) {
 		super(plugin.id, PLUGIN_SETTINGS_ROLE);
+		this.#localize = callbacks.localize;
 		this.#render(undefined, []);
 		void this.#loadConfig();
 	}
@@ -648,6 +696,7 @@ export class MarketplacePluginDetailComponent extends OverlayPanel {
 				this.manager,
 				(key, value) => this.callbacks.onConfigChange(runtimePlugin.name, key, value),
 				this.callbacks.requestRender,
+				this.callbacks.localize,
 			);
 			this.#render(runtimePlugin, configItems);
 			this.callbacks.requestRender?.();
@@ -667,28 +716,32 @@ export class MarketplacePluginDetailComponent extends OverlayPanel {
 		const entry = plugin.entries[0];
 		this.title = plugin.id;
 		const subtitleParts = [`[${plugin.scope}]`];
-		if (plugin.shadowedBy) subtitleParts.push(`${theme.status.shadowed} shadowed by ${plugin.shadowedBy}`);
+		if (plugin.shadowedBy)
+			subtitleParts.push(`${theme.status.shadowed} ${this.#tr("shadowed by")} ${plugin.shadowedBy}`);
 
 		const items: SettingItem[] = [
 			{
 				id: "__enabled__",
-				label: "Enabled",
-				description: "Enable or disable this marketplace plugin",
+				label: this.#tr("Enabled"),
+				description: this.#tr("Enable or disable this marketplace plugin"),
 				currentValue: marketplaceEnabled(plugin) ? "true" : "false",
 				values: ["true", "false"],
 			},
 			...configItems,
 		];
 		const summary: Component[] = [
-			new Text(theme.fg("dim", `version       ${entry?.version ?? "(unknown)"}`), 0, 0),
-			new Text(theme.fg("dim", `scope         ${plugin.scope}`), 0, 0),
+			new Text(theme.fg("dim", `${this.#tr("version")}       ${entry?.version ?? this.#tr("(unknown)")}`), 0, 0),
+			new Text(theme.fg("dim", `${this.#tr("scope")}         ${plugin.scope}`), 0, 0),
 			new Text(
-				theme.fg("dim", `install path  ${entry?.installPath ? shortenPath(entry.installPath) : "(unknown)"}`),
+				theme.fg(
+					"dim",
+					`${this.#tr("install path")}  ${entry?.installPath ? shortenPath(entry.installPath) : this.#tr("(unknown)")}`,
+				),
 				0,
 				0,
 			),
-			new Text(theme.fg("dim", `installed at  ${entry?.installedAt ?? "(unknown)"}`), 0, 0),
-			new Text(theme.fg("dim", `last updated  ${entry?.lastUpdated ?? "(unknown)"}`), 0, 0),
+			new Text(theme.fg("dim", `${this.#tr("installed at")}  ${entry?.installedAt ?? this.#tr("(unknown)")}`), 0, 0),
+			new Text(theme.fg("dim", `${this.#tr("last updated")}  ${entry?.lastUpdated ?? this.#tr("(unknown)")}`), 0, 0),
 		];
 		if (entry?.gitCommitSha) {
 			summary.push(new Text(theme.fg("dim", `git sha       ${entry.gitCommitSha}`), 0, 0));
@@ -701,7 +754,7 @@ export class MarketplacePluginDetailComponent extends OverlayPanel {
 			maxVisible: Math.min(items.length, 10),
 			settingsTheme: getSettingsListTheme(),
 			summary,
-			hint: `${editorKey("tui.select.confirm")} to edit · ${editorKey("tui.select.cancel")} to go back`,
+			hint: `${editorKey("tui.select.confirm")} ${this.#tr("to edit")} · ${editorKey("tui.select.cancel")} ${this.#tr("to go back")}`,
 			onChange: (id, newValue) => {
 				if (id === "__enabled__") {
 					const next = newValue === "true";
@@ -849,6 +902,8 @@ export interface PluginSettingsCallbacks {
 	onPluginChanged: () => void | Promise<void>;
 	/** Schedules a TUI frame after asynchronous plugin data loads. */
 	requestRender?: () => void;
+	/** Display-only translation for stable hooks text; identity when English is active. */
+	localize?: (text: string) => string;
 }
 
 /** Component with handleInput method */
@@ -915,11 +970,15 @@ export class PluginSettingsComponent extends Container {
 			...marketplacePlugins.map((plugin): PluginListEntry => ({ kind: "marketplace", plugin })),
 		];
 
-		this.#viewComponent = new PluginListComponent(entries, {
-			onNpmSelect: plugin => this.#showPluginDetail(plugin),
-			onMarketplaceSelect: plugin => this.#showMarketplaceDetail(plugin),
-			onCancel: () => this.callbacks.onClose(),
-		});
+		this.#viewComponent = new PluginListComponent(
+			entries,
+			{
+				onNpmSelect: plugin => this.#showPluginDetail(plugin),
+				onMarketplaceSelect: plugin => this.#showMarketplaceDetail(plugin),
+				onCancel: () => this.callbacks.onClose(),
+			},
+			this.callbacks.localize,
+		);
 
 		this.addChild(this.#viewComponent);
 
@@ -940,7 +999,12 @@ export class PluginSettingsComponent extends Container {
 		) {
 			return view.prefsPage();
 		}
-		return { lead: "Loading installed plugins…", sections: [], focus: null, editing: null };
+		return {
+			lead: this.callbacks.localize?.("Loading installed plugins…") ?? "Loading installed plugins…",
+			sections: [],
+			focus: null,
+			editing: null,
+		};
 	}
 
 	/** Routes a native page event to the current view. */
@@ -982,6 +1046,7 @@ export class PluginSettingsComponent extends Container {
 			},
 			onBack: () => this.#showPluginList(),
 			requestRender: this.callbacks.requestRender,
+			localize: this.callbacks.localize,
 		});
 
 		this.addChild(this.#viewComponent);
@@ -1015,6 +1080,7 @@ export class PluginSettingsComponent extends Container {
 			},
 			onBack: () => this.#showPluginList(),
 			requestRender: this.callbacks.requestRender,
+			localize: this.callbacks.localize,
 		});
 
 		this.addChild(this.#viewComponent);

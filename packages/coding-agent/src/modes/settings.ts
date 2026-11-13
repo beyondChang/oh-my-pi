@@ -1,4 +1,5 @@
-import { combine, effect, register, type Setting } from "../config/registry";
+import { combine, effect, register, type Setting, usesProcessState } from "../config/registry";
+import { initializeLanguage, setLanguage } from "../i18n";
 import type { Settings } from "../config/settings";
 import { MOTION_MODES, MOTION_PRESETS } from "../config/motion-presets";
 import { formatKeyHint, formatKeyHints } from "@oh-my-pi/pi-tui/app-keybindings";
@@ -61,6 +62,36 @@ export const cfgGitEnabled = register({
 // ────────────────────────────────────────────────────────────────────────
 
 // Theme
+// The language setting drives the process-wide i18n state through the same
+// effect system as other appearance preferences. Simplified Chinese is the
+// default for this fork; English remains the upstream baseline and fallback.
+export const cfgLanguage = register({
+	id: "language",
+	type: "enum",
+	values: ["zh-CN", "en"] as const,
+	default: "zh-CN",
+	ui: {
+		tab: "appearance",
+		group: "Theme",
+		label: "Language",
+		description: "Language used for the OMP user interface",
+		options: [
+			{ value: "zh-CN", label: "Simplified Chinese", description: "Use the Simplified Chinese interface" },
+			{ value: "en", label: "English", description: "Use the English interface" },
+		],
+	},
+});
+effect(cfgLanguage, language => {
+	// A subagent overlay or a worker mirror can carry another scope's language; it never
+	// replaces the host session's choice on the shared process-wide interface state.
+	if (usesProcessState()) setLanguage(language);
+});
+
+/** Apply a loaded language to a Settings scope that does not drive effects. */
+export function initializeLanguageFromSettings(settings: Settings): void {
+	initializeLanguage(cfgLanguage.get(settings));
+}
+
 export const cfgThemeDark = register({
 	id: "theme.dark",
 	type: "string",

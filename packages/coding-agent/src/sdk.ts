@@ -426,6 +426,7 @@ import {
 	cfgTuiAutoGraph,
 	cfgTuiRenderMermaid,
 	cfgTuiRenderSvg,
+	initializeLanguageFromSettings,
 } from "./modes/settings";
 import { cfgLspEnabled, cfgLspLazy, cfgLspShared } from "./lsp/settings";
 import {
@@ -1982,6 +1983,7 @@ async function createAgentSessionScoped(options: CreateAgentSessionOptions): Pro
 	const settings = await (options.settings ??
 		options.settingsManager ??
 		logger.time("settings", Settings.init, { cwd, agentDir }));
+	initializeLanguageFromSettings(settings);
 	// Discovery provider toggles and process-wide setting effects (theme, request limits, …)
 	// follow the newest holder: each top-level session holds both on its settings until disposed,
 	// then hands them back to the previous holder. Subagents and helper sessions never take them,

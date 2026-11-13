@@ -68,6 +68,8 @@ export interface ComposerWelcomeUpdate {
 	readonly version?: string;
 	/** Background self-update activity after the version label; `null` clears it. */
 	readonly versionUpdate?: VersionUpdate | null;
+	/** Display-only translation for welcome tips and stable UI text. */
+	readonly localize?: (text: string) => string;
 }
 
 /**
@@ -91,6 +93,8 @@ export interface ComposerOptions {
 	readonly tuiOptions?: TUIOptions;
 	readonly preferences?: Partial<ComposerPreferences>;
 	readonly welcome?: ComposerWelcomeUpdate;
+	/** Display-only translation for welcome tips and stable UI text. */
+	readonly localize?: (text: string) => string;
 	readonly status?: ComposerStatusCache;
 	readonly exit?: (code: number) => void;
 	readonly now?: () => number;
@@ -242,6 +246,7 @@ export class Composer implements TerminalFrameProvider, NativeSurfaceProvider {
 	readonly #exit: (code: number) => void;
 	readonly #now: () => number;
 	#preferences: ComposerPreferences;
+	#localize: ((text: string) => string) | undefined;
 	#welcome: WelcomeComponent | undefined;
 	#version = "";
 	#versionUpdate: VersionUpdate | null = null;
@@ -358,6 +363,7 @@ export class Composer implements TerminalFrameProvider, NativeSurfaceProvider {
 		// ExtensionExitError through the guarded process.exit (#11789).
 		this.#exit = options.exit ?? (code => postmortem.exitProcess(code));
 		this.#now = options.now ?? Date.now;
+		this.#localize = options.localize;
 		this.#preferences = { ...COMPOSER_DEFAULTS, ...options.preferences };
 		this.#applyWelcomeUpdate(options.welcome ?? {});
 
@@ -1156,6 +1162,14 @@ export class Composer implements TerminalFrameProvider, NativeSurfaceProvider {
 		if (!welcome) return;
 		if (update.version !== undefined) welcome.setVersion(this.#version);
 		if (update.versionUpdate !== undefined) welcome.setVersionUpdate(this.#versionUpdate);
+		if (update.localize !== undefined) this.setLocalize(update.localize);
+		this.ui.requestRender();
+	}
+
+	/** Set the display-only translation used by welcome tips and chrome. */
+	setLocalize(localize: ((text: string) => string) | undefined): void {
+		this.#localize = localize;
+		this.#welcome?.setLocalize(localize);
 		this.ui.requestRender();
 	}
 
@@ -1274,7 +1288,7 @@ export class Composer implements TerminalFrameProvider, NativeSurfaceProvider {
 
 	#ensureWelcome(): void {
 		if (this.#welcome) return;
-		this.#welcome = new WelcomeComponent(this.#version);
+		this.#welcome = new WelcomeComponent(this.#version, this.#localize);
 		this.#welcome.setVersionUpdate(this.#versionUpdate);
 	}
 

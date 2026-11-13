@@ -50,7 +50,9 @@ type SignInOutcome =
 export class SignInScene implements SetupSceneController {
 	readonly title = SCENE_TITLE;
 	get subtitle(): string {
-		return `Sign in to one or more providers. Press ${editorKey("tui.select.cancel")} when you're done.`;
+		const localize = this.#host.ctx.localize ?? ((text: string) => text);
+		const key = editorKey("tui.select.cancel");
+		return localize(`Sign in to one or more providers. Press ${key} when you're done.`);
 	}
 
 	#authStorage: AuthStorage;
@@ -66,6 +68,10 @@ export class SignInScene implements SetupSceneController {
 	#native = new Memo();
 
 	readonly #host: SetupSceneHost;
+
+	#localize(text: string): string {
+		return this.#host.ctx.localize?.(text) ?? text;
+	}
 
 	constructor(host: SetupSceneHost) {
 		this.#host = host;
@@ -128,7 +134,7 @@ export class SignInScene implements SetupSceneController {
 		let intro: Container | undefined;
 		if (maxLines === undefined || maxLines >= 17 + 2) {
 			intro = new Container();
-			intro.addChild(new Text(theme.fg("muted", LIST_LEAD), 0, 0));
+			intro.addChild(new Text(theme.fg("muted", this.#localize(LIST_LEAD)), 0, 0));
 			intro.addChild(new Spacer(1));
 		}
 		const status = new Container();
@@ -164,7 +170,7 @@ export class SignInScene implements SetupSceneController {
 			if (dialog) return col([dialog]);
 			if (sheet) return col([this.#selector]);
 			const children: NativeChild[] = [
-				node("text", { spans: [span(LIST_LEAD, "muted")] }, undefined, "intro"),
+				node("text", { spans: [span(this.#localize(LIST_LEAD), "muted")] }, undefined, "intro"),
 				this.#selector,
 			];
 			this.#statusLines().forEach((line, index) => {
@@ -187,12 +193,13 @@ export class SignInScene implements SetupSceneController {
 			status = [span(`Couldn't sign in to ${outcome.provider}: ${outcome.message}`, "error")];
 		}
 		return {
-			title: SCENE_TITLE,
-			subtitle: SHEET_LEAD,
+			title: this.#localize(SCENE_TITLE),
+			subtitle: this.#localize(SHEET_LEAD),
 			role: SETUP_SHEET_ROLE,
 			size: "lg",
 			...(status ? { status } : {}),
 			leave: { id: "skip", label: this.#signedIn ? "Continue" : "Skip" },
+			localize: text => this.#localize(text),
 		};
 	}
 

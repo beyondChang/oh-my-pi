@@ -1,3 +1,4 @@
+import { initializeLanguage } from "@oh-my-pi/pi-coding-agent/i18n";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
@@ -25,6 +26,8 @@ let geometryStub: { restore(): void } | undefined;
 beforeEach(async () => {
 	resetSettingsForTest();
 	await Settings.init({ inMemory: true });
+	// The language setting defaults to Simplified Chinese; these panels are asserted in English.
+	initializeLanguage("en");
 	geometryStub = stubStdoutGeometry(120);
 });
 

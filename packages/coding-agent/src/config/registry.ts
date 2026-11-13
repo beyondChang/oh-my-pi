@@ -976,6 +976,23 @@ export function effectsSettings(): Settings | undefined {
 	return effectBinding?.settings;
 }
 
+/**
+ * Whether the host instance (rather than a subagent overlay or a worker mirror) drives effects.
+ * The global instance opts in with {@link markProcessStateHost}; other scopes are never it.
+ */
+let processStateHost: Settings | undefined;
+
+/** Marks the process-global settings instance whose effects may set process-wide state. */
+export function markProcessStateHost(settings: Settings): void {
+	processStateHost = settings;
+}
+
+/** Whether the instance driving effects is the marked one, so process-wide state may follow it. */
+export function usesProcessState(): boolean {
+	const instance = effectBinding?.settings;
+	return instance !== undefined && instance === processStateHost;
+}
+
 /** Drops every {@link bindEffects} hold, so no instance drives effects (test teardown). */
 export function unbindEffects(): void {
 	effectHolds.length = 0;

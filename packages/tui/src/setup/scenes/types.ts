@@ -22,6 +22,8 @@ export interface SetupUiHost {
 
 /** Application-owned preferences and effects consumed by setup scenes. */
 export interface SetupHost extends SetupUiHost {
+	/** Display-only translation for stable English UI text; identity when English is active. */
+	readonly localize?: (text: string) => string;
 	readonly statusLine: ComposerPreviewStatusSource | undefined;
 	readonly composerShape: ComposerShape;
 	readonly symbolPreset: SymbolPreset;

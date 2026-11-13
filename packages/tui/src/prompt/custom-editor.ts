@@ -52,7 +52,7 @@ import { fgOrPlain, theme } from "../theme/theme";
 const SHELL_SIGIL_RE = /^\s*(?:!!?|\$\$?)[ \t]?/;
 
 /** The untitled session's TSP placeholder; the rotating ANSI hints (thinking effort, …) move into control tooltips. */
-const NATIVE_COMPOSER_PLACEHOLDER = "What are we cooking?";
+export const NATIVE_COMPOSER_PLACEHOLDER = "What are we cooking?";
 
 /** Live composer state the TSP layout shows; the interactive host wires {@link CustomEditor.composerState}. */
 export interface ComposerNativeState {

@@ -82,6 +82,7 @@ import type { CollabHost } from "../collab/host";
 import { KeybindingsManager } from "@oh-my-pi/pi-tui/app-keybindings";
 import { appKey, editorKey, rawKeyHint } from "@oh-my-pi/pi-tui/chrome/keybinding-hints";
 import { formatModelString, type ResolvedModelRoleValue, resolveModelRoleValue } from "../config/model-resolver";
+import { localizeUiText, onLanguageChanged } from "../i18n";
 import { isSettingsInitialized, Settings, settings } from "../config/settings";
 import { clearClaudePluginRootsCache } from "../discovery/helpers";
 import type {
@@ -293,7 +294,11 @@ import { AttachmentChipsBand } from "@oh-my-pi/pi-tui/prompt/attachment-chips";
 import type { BashExecutionComponent } from "@oh-my-pi/pi-tui/chat/bash-execution";
 import { ChatBlock, type ChatBlockHost } from "@oh-my-pi/pi-tui/chrome/chat-block";
 import { CodexResetFireworksController } from "@oh-my-pi/pi-tui/overlays/codex-reset-fireworks";
-import { type ComposerNativeState, CustomEditor } from "@oh-my-pi/pi-tui/prompt/custom-editor";
+import {
+	type ComposerNativeState,
+	CustomEditor,
+	NATIVE_COMPOSER_PLACEHOLDER,
+} from "@oh-my-pi/pi-tui/prompt/custom-editor";
 import { DynamicBorder } from "@oh-my-pi/pi-tui/chrome/dynamic-border";
 import { EditorTopGap } from "@oh-my-pi/pi-tui/prompt/editor-top-gap";
 import type { VersionUpdate } from "@oh-my-pi/pi-tui/prompt/welcome";
@@ -479,6 +484,11 @@ import {
 	cfgCompactionIdleTimeoutSeconds,
 	cfgCompactionMethodOrder,
 } from "../session/context-settings";
+
+/** The native editor no longer inherits the base placeholder: describe the hint line, or the untitled composer copy. */
+export function describeComposerPlaceholder(hint: string | undefined): TspText {
+	return [{ t: hint ?? localizeUiText(NATIVE_COMPOSER_PLACEHOLDER) }];
+}
 
 /**
  * Settings with live interactive-UI side effects, keyed by id. One coalesced listener applies
@@ -2125,11 +2135,14 @@ export class InteractiveMode implements InteractiveModeContext {
 			new Composer({
 				preferences,
 				welcome: { version },
+				localize: localizeUiText,
 			});
 		this.composer.setPreferences(preferences);
 		this.ui = this.composer.ui;
 		this.editor = this.composer.editor;
 		this.editor.magicKeywordsEnabled = () => cfgMagicKeywordsEnabled.get(this.settings);
+		// Native editors describe the placeholder as plain text, so they get the unstyled line.
+		this.editor.describePlaceholder = () => describeComposerPlaceholder(this.#composerHint({ styled: false }));
 		this.editor.placeholder = () => this.#composerHint();
 		this.editor.predictions = () => this.#eventController.composerPrediction.choices;
 		this.editor.onPredictionAccepted = index => this.#eventController.composerPrediction.accepted(index);
@@ -2536,7 +2549,7 @@ export class InteractiveMode implements InteractiveModeContext {
 
 		const startupQuiet = cfgStartupQuiet.get(settings);
 		this.composer.setPreferences({ quiet: startupQuiet });
-		this.composer.updateWelcome({ version: this.#version });
+		this.composer.updateWelcome({ version: this.#version, localize: localizeUiText });
 		this.#syncHeaderExtras();
 		this.statusLine.watchBranch(() => this.ui.requestRender());
 		this.composer.setStatusComponent(this.statusLine);
@@ -2948,6 +2961,16 @@ export class InteractiveMode implements InteractiveModeContext {
 			}),
 		);
 		// Set up theme file watcher
+		this.#eventBusUnsubscribers.push(
+			onLanguageChanged(() => {
+				// Rebuild command descriptions and the welcome tip in the new language.
+				this.composer.updateWelcome({ localize: localizeUiText });
+				void this.refreshSlashCommandState().catch(error => {
+					logger.warn("Language change: slash command refresh failed", { error: String(error) });
+				});
+				this.ui.requestRender();
+			}),
+		);
 		this.#eventBusUnsubscribers.push(
 			onThemeChange(event => {
 				this.#refreshSlashCommandIcons();
@@ -4930,14 +4953,18 @@ export class InteractiveMode implements InteractiveModeContext {
 	}
 
 	/** Placeholder for the empty composer; see `COMPOSER_HINTS` for the registered hints. */
-	#composerHint(): string | undefined {
-		return resolveComposerHint({
-			runningAgents: this.#runningSubagentCount,
-			focusedOnAgent: this.focusedAgentId !== undefined,
-			conversationStarted: this.viewSession.messages.length > 0,
-			keybindings: this.keybindings,
-			uses: id => hintUsage.get(id),
-		});
+	#composerHint(options: { styled?: boolean } = {}): string | undefined {
+		return resolveComposerHint(
+			{
+				runningAgents: this.#runningSubagentCount,
+				focusedOnAgent: this.focusedAgentId !== undefined,
+				conversationStarted: this.viewSession.messages.length > 0,
+				keybindings: this.keybindings,
+				uses: id => hintUsage.get(id),
+			},
+			localizeUiText,
+			options,
+		);
 	}
 
 	rebuildChatFromMessages(options: { reuseSettledComponents?: boolean } = {}): void {

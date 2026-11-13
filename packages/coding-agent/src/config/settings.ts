@@ -48,6 +48,7 @@ import {
 	bindEffects,
 	inheritWarnings,
 	lookup as lookupSetting,
+	markProcessStateHost,
 	resetRegistryForTest,
 	settingValuesEqual,
 	type ValueCacheEntry,
@@ -799,6 +800,7 @@ export class Settings {
 				globalInstance = instance;
 				clearBoundSettingsMethods();
 				globalInstancePromise = Promise.resolve(instance);
+				markProcessStateHost(instance);
 				bindEffects(instance);
 				return instance;
 			},
@@ -980,6 +982,7 @@ export class Settings {
 		releaseGlobalMirrorEffects?.();
 		globalInstance = instance;
 		globalInstancePromise = Promise.resolve(instance);
+		markProcessStateHost(instance);
 		clearBoundSettingsMethods();
 		releaseGlobalMirrorEffects = bindEffects(instance);
 	}

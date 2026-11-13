@@ -149,12 +149,13 @@ function tipSpans(tip: string): TspSpan[] {
  * wrapped together, with no indent, so the banner can center each line.
  * `[]` when `width` leaves no room for a useful line.
  */
-export function renderWelcomeTip(tip: string, width: number, phase = 0): string[] {
-	const label = "Tip: ";
+export function renderWelcomeTip(tip: string, width: number, phase = 0, localize?: (text: string) => string): string[] {
+	const label = localize?.("Tip: ") ?? "Tip: ";
 	if (width - visibleWidth(label) < 8) return [];
 
 	const isNew = NEW_TIP_MARKER.test(tip);
-	const body = linkTipText(expandTipKeys(isNew ? tip.replace(NEW_TIP_MARKER, "") : tip));
+	const rawBody = isNew ? tip.replace(NEW_TIP_MARKER, "") : tip;
+	const body = linkTipText(expandTipKeys(localize?.(rawBody) ?? rawBody));
 
 	// Trailing spaces left by the wrap would count toward the width the banner centers.
 	const wrapped = wrapTextWithAnsi(replaceTabs(`${label}${body}`), width).map(line => line.trimEnd());
@@ -225,8 +226,22 @@ export class WelcomeComponent implements Component {
 	#cachedWidth = -1;
 	#cachedLines: string[] | undefined;
 	#native: { tip: string | undefined; node: NativeNode } | undefined;
+	#localize: ((text: string) => string) | undefined;
 
-	constructor(private version: string) {}
+	constructor(
+		private version: string,
+		localize?: (text: string) => string,
+	) {
+		this.#localize = localize;
+	}
+
+	/** Update the display-only translation (a live language switch). */
+	setLocalize(localize: ((text: string) => string) | undefined): void {
+		if (localize === this.#localize) return;
+		this.#localize = localize;
+		this.#native = undefined;
+		this.#cachedWidth = -1;
+	}
 	get tip(): string | undefined {
 		this.#nagRoll ??= Math.random();
 		this.#tipRoll ??= Math.random();
@@ -255,12 +270,13 @@ export class WelcomeComponent implements Component {
 		const body: NativeChild[] = [lockupNode(this.version, this.#versionUpdate)];
 		if (tip) {
 			const isNew = NEW_TIP_MARKER.test(tip);
-			const tipText = compactText(tipSpans(expandTipKeys(isNew ? tip.replace(NEW_TIP_MARKER, "") : tip)));
+			const rawTip = isNew ? tip.replace(NEW_TIP_MARKER, "") : tip;
+			const tipText = compactText(tipSpans(expandTipKeys(this.#localize?.(rawTip) ?? rawTip)));
 			const tipRow: NativeChild[] = [
 				node("icon", { name: "lightbulb", role: "omp.welcome.tip-icon" }),
 				text(tipText, { wrap: "word", role: "omp.welcome.tip-text" }),
 			];
-			if (isNew) tipRow.push(node("shimmer", { text: "New", role: "omp.welcome.new" }));
+			if (isNew) tipRow.push(node("shimmer", { text: this.#localize?.("New") ?? "New", role: "omp.welcome.new" }));
 			body.push(node("row", { gap: "sm", align: "start", role: "omp.welcome.tip" }, tipRow, "tip"));
 		}
 		// No head row or chevron: the card is the hero; the version sits under the wordmark.
@@ -387,7 +403,7 @@ export class WelcomeComponent implements Component {
 		// intro's re-render frames, then settles into a still rainbow once the
 		// banner caches its resting frame. Non-"[NEW]" tips ignore the phase entirely.
 		const phase = NEW_TIP_MARKER.test(tip) ? performance.now() / NEW_GLOW_PERIOD_MS : 0;
-		return renderWelcomeTip(tip, Math.min(room, TIP_MEASURE), phase);
+		return renderWelcomeTip(tip, Math.min(room, TIP_MEASURE), phase, this.#localize);
 	}
 
 	/** Pick the logo frame for the current intro phase, or the resting frame. */

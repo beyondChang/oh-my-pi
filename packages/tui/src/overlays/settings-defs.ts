@@ -145,6 +145,8 @@ export interface SettingsDisplayEntry {
 
 export interface SettingsHost {
 	entries: readonly SettingsDisplayEntry[];
+	/** Display-only translation for a stable English settings string. Identity in English. */
+	localize?: (text: string) => string;
 	get(path: string): unknown;
 	set(path: string, value: unknown): void;
 	/**
@@ -165,6 +167,8 @@ interface BaseSettingDef {
 	schemaType: string;
 	label: string;
 	description: string;
+	/** Localized section heading; `group` remains the stable layout identifier. */
+	displayGroup?: string;
 	/** Risk note shown in warning styling; set for settings that can get the user flagged or banned. */
 	warning?: string;
 	tab: SettingTab;
@@ -226,7 +230,7 @@ function resolveOptions(ui: AnyUiMetadata): OptionList | "runtime" | undefined {
 	return ui.options;
 }
 
-function entryToSettingDef(entry: SettingsDisplayEntry): SettingDef | null {
+function entryToSettingDef(entry: SettingsDisplayEntry, localize?: (text: string) => string): SettingDef | null {
 	const { path, ui } = entry;
 	if (!ui) return null;
 
@@ -241,6 +245,7 @@ function entryToSettingDef(entry: SettingsDisplayEntry): SettingDef | null {
 		warning: ui.warning,
 		tab: ui.tab,
 		group: ui.group,
+		displayGroup: ui.group ? (localize?.(ui.group) ?? ui.group) : undefined,
 		condition,
 	};
 
@@ -298,12 +303,15 @@ function entryToSettingDef(entry: SettingsDisplayEntry): SettingDef | null {
 const definitions = new WeakMap<readonly SettingsDisplayEntry[], SettingDef[]>();
 
 /** Get all setting definitions with UI, retaining live host visibility predicates. */
-export function getAllSettingDefs(entries: readonly SettingsDisplayEntry[]): SettingDef[] {
+export function getAllSettingDefs(
+	entries: readonly SettingsDisplayEntry[],
+	localize?: (text: string) => string,
+): SettingDef[] {
 	let defs = definitions.get(entries);
 	if (!defs) {
 		defs = [];
 		for (const entry of entries) {
-			const def = entryToSettingDef(entry);
+			const def = entryToSettingDef(entry, localize);
 			if (def) defs.push(def);
 		}
 		definitions.set(entries, defs);
@@ -312,8 +320,12 @@ export function getAllSettingDefs(entries: readonly SettingsDisplayEntry[]): Set
 }
 
 /** Get settings ordered by their tab's section layout. */
-export function getSettingsForTab(entries: readonly SettingsDisplayEntry[], tab: SettingTab): SettingDef[] {
-	const defs = getAllSettingDefs(entries).filter(def => def.tab === tab);
+export function getSettingsForTab(
+	entries: readonly SettingsDisplayEntry[],
+	tab: SettingTab,
+	localize?: (text: string) => string,
+): SettingDef[] {
+	const defs = getAllSettingDefs(entries, localize).filter(def => def.tab === tab);
 	const order = TAB_GROUPS[tab];
 	const rank = (def: SettingDef): number => {
 		if (!def.group) return -1;
@@ -324,8 +336,12 @@ export function getSettingsForTab(entries: readonly SettingsDisplayEntry[], tab:
 }
 
 /** Find the display definition for a host setting path. */
-export function getSettingDef(entries: readonly SettingsDisplayEntry[], path: string): SettingDef | undefined {
-	return getAllSettingDefs(entries).find(def => def.path === path);
+export function getSettingDef(
+	entries: readonly SettingsDisplayEntry[],
+	path: string,
+	localize?: (text: string) => string,
+): SettingDef | undefined {
+	return getAllSettingDefs(entries, localize).find(def => def.path === path);
 }
 
 /**

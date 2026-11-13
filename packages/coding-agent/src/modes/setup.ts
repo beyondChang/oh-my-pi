@@ -14,6 +14,7 @@ import type { Settings } from "../config/settings";
 import { canSelfUpdate } from "../cli/update-cli";
 import { captureBrowserSession } from "../utils/browser-session";
 import { createModelBrowserSource } from "./model-browser-source";
+import { localizeUiText } from "../i18n";
 import type { InteractiveModeContext } from "./types";
 
 import {
@@ -35,6 +36,7 @@ export { runStartupSplash } from "@oh-my-pi/pi-tui/setup/startup-splash";
 export function createSetupHost(ctx: InteractiveModeContext): SetupHost {
 	const modelSource = createModelBrowserSource(ctx.settings, model => ctx.session.effectiveServiceTier(model));
 	return {
+		localize: localizeUiText,
 		ui: ctx.ui,
 		get statusLine() {
 			return ctx.statusLine;
