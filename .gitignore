@@ -77,6 +77,8 @@ sdk/python/omp-rpc/build/
 .wt/
 CPU*.md
 packages/coding-agent/binaries/
+# Local release packages assembled from the binaries above
+/release/
 
 # robomp runtime state
 python/robomp/data/
