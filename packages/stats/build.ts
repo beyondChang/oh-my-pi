@@ -22,11 +22,11 @@ if (!result.success) {
 
 // The inline script applies the persisted theme before first paint (no flash).
 const indexHtml = `<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>omp stats</title>
+    <title>omp 使用统计</title>
     <script>
       (function () {
         try {

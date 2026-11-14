@@ -115,10 +115,10 @@ export function Shell({ section, onSectionChange, range, onRangeChange, children
 				))}
 				<div className="sidebar-foot micro">
 					<span>
-						<span className="kbd">1</span>–<span className="kbd">6</span> range
+						<span className="kbd">1</span>–<span className="kbd">6</span> 切换时间范围
 					</span>
 					<span>
-						<span className="kbd">G</span> then letter to jump
+						<span className="kbd">G</span> + 字母 快速跳转
 					</span>
 				</div>
 			</nav>
