@@ -3,11 +3,10 @@ import * as nodeFs from "node:fs";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { BuildAnswer, BuildPatch, Fetch } from "@oh-my-pi/pi-coding-agent/cli/build-service";
+import type { BuildAnswer, Fetch } from "@oh-my-pi/pi-coding-agent/cli/build-service";
 import * as pluginCli from "@oh-my-pi/pi-coding-agent/cli/plugin-cli";
 import * as updateCli from "@oh-my-pi/pi-coding-agent/cli/update-cli";
 import {
-	type BinaryPatchApplier,
 	buildBunInstallArgs,
 	buildHomebrewUpdateArgs,
 	buildMiseForceInstallArgs,
@@ -15,23 +14,17 @@ import {
 	buildMiseUpgradeArgs,
 	buildNpmInstallArgs,
 	buildNpmUpdateEnv,
-	buildRenameCleanupPackages,
 	type InstalledVersionVerification,
 	managedInstallName,
 	type ManagerUpdateSteps,
-	migrateRenamedInstall,
 	parseReportedVersion,
 	parseUpdateArgs,
 	pruneBunInstallCache,
 	type ReleaseInfo,
-	type RenameMigrationSteps,
 	replaceBinaryForUpdate,
 	resolveBunGlobalNodeModulesDirFromLocations,
-	resolveReleaseDist,
-	resolveReleaseRename,
 	resolveUpdateMethodForTest,
 	resolveUpdateTargetFromPath,
-	shouldForceBinaryUpdate,
 	sweepStaleUpdateArtifacts,
 	updateViaBinaryAt,
 	updateViaManager,
@@ -82,18 +75,6 @@ function withPlatform<T>(platform: NodeJS.Platform, fn: () => T): T {
 	Object.defineProperty(process, "platform", { ...platformDescriptor, value: platform });
 	try {
 		return fn();
-	} finally {
-		Object.defineProperty(process, "platform", platformDescriptor);
-	}
-}
-
-/** Async {@link withPlatform}: keeps the override until the returned promise settles. */
-async function withPlatformAsync<T>(platform: NodeJS.Platform, fn: () => Promise<T>): Promise<T> {
-	const platformDescriptor = Object.getOwnPropertyDescriptor(process, "platform");
-	if (!platformDescriptor) throw new Error("process.platform descriptor missing");
-	Object.defineProperty(process, "platform", { ...platformDescriptor, value: platform });
-	try {
-		return await fn();
 	} finally {
 		Object.defineProperty(process, "platform", platformDescriptor);
 	}
@@ -742,158 +723,6 @@ describe("update-cli package manager commands", () => {
 	);
 });
 
-describe("update-cli npm rename contract", () => {
-	it("parses a well-formed omp.rename pointer and rejects malformed ones", () => {
-		expect(resolveReleaseRename({ omp: { rename: { package: "@new/omp", natives: "@new/natives" } } })).toEqual({
-			pkg: "@new/omp",
-			natives: "@new/natives",
-		});
-		expect(resolveReleaseRename({ omp: { rename: { package: "@new/omp" } } })).toEqual({
-			pkg: "@new/omp",
-			natives: undefined,
-		});
-		expect(resolveReleaseRename({ omp: { rename: { package: "" } } })).toBeUndefined();
-		expect(resolveReleaseRename({ omp: { rename: "@new/omp" } })).toBeUndefined();
-		expect(resolveReleaseRename({ omp: {} })).toBeUndefined();
-		expect(resolveReleaseRename(undefined)).toBeUndefined();
-	});
-
-	it("installs renamed package names in lock-step, with no old-name leftovers in the argv", () => {
-		const packages = { pkg: "@new/omp", natives: "@new/natives" };
-
-		const bunArgs = buildBunInstallArgs("17.0.0", "linux-x64", packages);
-		expect(bunArgs).toContain("@new/omp@17.0.0");
-		expect(bunArgs).toContain("@new/natives@17.0.0");
-		expect(bunArgs).toContain("@new/natives-linux-x64@17.0.0");
-		expect(bunArgs.some(arg => arg.startsWith("@oh-my-pi/"))).toBe(false);
-
-		expect(buildNpmInstallArgs("17.0.0", "linux-x64", packages)).toContain("@new/omp@17.0.0");
-	});
-
-	it("adds --force to npm argv only for rename migrations so the old package's bin can be clobbered", () => {
-		const packages = { pkg: "@new/omp", natives: "@new/natives" };
-		expect(buildNpmInstallArgs("17.0.0", "linux-x64", packages, { force: true })).toContain("--force");
-		expect(buildNpmInstallArgs("16.3.15", "win32-x64")).not.toContain("--force");
-	});
-
-	it("removes the old agent package and its natives companions when both names moved", () => {
-		const packages = { pkg: "@new/omp", natives: "@new/natives" };
-		expect(buildRenameCleanupPackages(packages, "darwin-arm64")).toEqual([
-			"@oh-my-pi/pi-coding-agent",
-			"@oh-my-pi/pi-natives",
-			"@oh-my-pi/pi-natives-darwin-arm64",
-		]);
-		expect(buildRenameCleanupPackages(packages, "linux-arm")).toEqual([
-			"@oh-my-pi/pi-coding-agent",
-			"@oh-my-pi/pi-natives",
-		]);
-	});
-
-	it("keeps the natives packages on an agent-only rename so cleanup cannot strip the addon the new install pinned", () => {
-		const packages = { pkg: "@new/omp", natives: "@oh-my-pi/pi-natives" };
-		expect(buildRenameCleanupPackages(packages, "darwin-arm64")).toEqual(["@oh-my-pi/pi-coding-agent"]);
-		expect(buildRenameCleanupPackages(packages, "linux-arm")).toEqual(["@oh-my-pi/pi-coding-agent"]);
-	});
-});
-
-describe("migrateRenamedInstall transaction", () => {
-	const release: ReleaseInfo = {
-		tag: "v999.1.0",
-		version: "999.1.0",
-		packages: { pkg: "@new/omp", natives: "@new/natives" },
-		registry: "https://registry.npmjs.org/",
-	};
-
-	function scriptedSteps(script: { install: number[]; removeOld?: number; verify: boolean[] }): {
-		steps: RenameMigrationSteps;
-		calls: string[];
-	} {
-		const calls: string[] = [];
-		let installs = 0;
-		let verifies = 0;
-		return {
-			calls,
-			steps: {
-				async install() {
-					calls.push("install");
-					return script.install[installs++] ?? 0;
-				},
-				async removeOld() {
-					calls.push("removeOld");
-					return script.removeOld ?? 0;
-				},
-				async verify() {
-					calls.push("verify");
-					return script.verify[verifies++]
-						? { ok: true, actual: "999.1.0", path: "/bin/omp" }
-						: { ok: false, path: "/bin/omp" };
-				},
-			},
-		};
-	}
-
-	it("never touches the old install when the new install fails", async () => {
-		vi.spyOn(console, "log").mockImplementation(() => {});
-		const { steps, calls } = scriptedSteps({ install: [1], verify: [] });
-
-		await expect(migrateRenamedInstall(release, steps)).rejects.toThrow("left untouched");
-		expect(calls).toEqual(["install"]);
-	});
-
-	it("installs the new package before removing the old one and verifies the result", async () => {
-		vi.spyOn(console, "log").mockImplementation(() => {});
-		const { steps, calls } = scriptedSteps({ install: [0], verify: [true] });
-
-		await migrateRenamedInstall(release, steps);
-		expect(calls).toEqual(["install", "removeOld", "verify"]);
-	});
-
-	it("restores the bin link by reinstalling when old-package removal breaks verification", async () => {
-		vi.spyOn(console, "log").mockImplementation(() => {});
-		const { steps, calls } = scriptedSteps({ install: [0, 0], verify: [false, true] });
-
-		await migrateRenamedInstall(release, steps);
-		expect(calls).toEqual(["install", "removeOld", "verify", "install", "verify"]);
-	});
-
-	it("treats old-package removal failure as a warning when the new install verifies", async () => {
-		const logs: string[] = [];
-		vi.spyOn(console, "log").mockImplementation(message => {
-			logs.push(String(message));
-		});
-		const { steps, calls } = scriptedSteps({ install: [0], removeOld: 1, verify: [true] });
-
-		await migrateRenamedInstall(release, steps);
-		expect(calls).toEqual(["install", "removeOld", "verify"]);
-		expect(logs.some(line => line.includes("could not remove the old"))).toBe(true);
-	});
-
-	it("aborts with a recovery hint when verification still fails after the restore install", async () => {
-		vi.spyOn(console, "log").mockImplementation(() => {});
-		const { steps, calls } = scriptedSteps({ install: [0, 0], verify: [false, false] });
-
-		await withPlatformAsync("linux", async () => {
-			await expect(migrateRenamedInstall(release, steps)).rejects.toThrow("curl -fsSL https://omp.sh/install");
-		});
-		expect(calls).toEqual(["install", "removeOld", "verify", "install", "verify"]);
-	});
-
-	it("uses the platform-aware PowerShell reinstall hint on Windows", async () => {
-		vi.spyOn(console, "log").mockImplementation(() => {});
-		const platformDescriptor = Object.getOwnPropertyDescriptor(process, "platform");
-		if (!platformDescriptor) throw new Error("process.platform descriptor missing");
-		Object.defineProperty(process, "platform", { ...platformDescriptor, value: "win32" });
-		try {
-			const { steps } = scriptedSteps({ install: [0, 0], verify: [false, false] });
-			const promise = migrateRenamedInstall(release, steps);
-			await expect(promise).rejects.toThrow("irm https://omp.sh/install.ps1");
-			await expect(promise).rejects.not.toThrow("| sh");
-		} finally {
-			Object.defineProperty(process, "platform", platformDescriptor);
-		}
-	});
-});
-
 describe("update-cli bun install command", () => {
 	it("pins the official npm registry and bypasses the manifest cache so a stale mirror or snapshot cannot mask a freshly published version", () => {
 		// Regression: omp queries https://registry.npmjs.org/<pkg>/latest directly.
@@ -1092,106 +921,6 @@ describe("update-cli release binary integrity", () => {
 		const newResidue = (await fs.readdir(dir)).filter(name => name.endsWith(".new"));
 		expect(newResidue).toEqual([]);
 	});
-});
-
-describe("update-cli build patches", () => {
-	const installed = "installed omp 18.8.8";
-	const next = "omp 18.8.9, rebuilt from the patch";
-	const patchBytes = "HDIFFSF20 patch from 18.8.8 to 18.8.9";
-	const patchUrl = "https://r2.test/patches/18.8.8-18.8.9";
-
-	function patchedBuild(patch: Partial<BuildPatch> = {}): BuildAnswer {
-		return buildAnswer("18.8.9", next, {
-			patch: {
-				fromSha256: Bun.SHA256.hash(installed, "hex"),
-				fromVersion: "18.8.8",
-				size: Buffer.byteLength(patchBytes),
-				sha256: Bun.SHA256.hash(patchBytes, "hex"),
-				url: patchUrl,
-				...patch,
-			},
-		});
-	}
-
-	/** Install `build` over a file holding `installed`, recording every URL fetched. */
-	async function install(
-		build: BuildAnswer,
-		applyPatch: BinaryPatchApplier,
-		patchBody = patchBytes,
-	): Promise<{ dir: string; targetPath: string; requested: string[] }> {
-		vi.spyOn(console, "log").mockImplementation(() => {});
-		const dir = await makeTempDir();
-		const targetPath = path.join(dir, "omp");
-		await Bun.write(targetPath, installed);
-		const requested: string[] = [];
-		const fetchImpl = async (input: string | URL | Request): Promise<Response> => {
-			const requestUrl = String(input);
-			requested.push(requestUrl);
-			if (requestUrl === patchUrl) return new Response(patchBody);
-			if (requestUrl === build.download) return new Response(next);
-			throw new Error(`Unexpected request: ${requestUrl}`);
-		};
-		await updateViaBinaryAt(targetPath, build, {
-			fetchImpl,
-			applyPatch,
-			verifyInstalledVersion: async version => ({ ok: true, actual: version, path: targetPath }),
-		});
-		return { dir, targetPath, requested };
-	}
-
-	/** Stands in for HDiffPatch: writes `output` when handed the installed base and the downloaded patch. */
-	function applier(output = next): Mock<BinaryPatchApplier> {
-		return vi.fn(async (oldPath: string, patchPath: string, outPath: string) => {
-			expect(await Bun.file(oldPath).text()).toBe(installed);
-			expect(await Bun.file(patchPath).text()).toBe(patchBytes);
-			await Bun.write(outPath, output);
-			return Buffer.byteLength(output);
-		});
-	}
-
-	async function residue(dir: string): Promise<string[]> {
-		return (await fs.readdir(dir)).filter(name => /\.(new|bak|patch)$/.test(name));
-	}
-
-	it("builds the new binary from the patch when the installed file is its base", async () => {
-		const applyPatch = applier();
-
-		const { dir, targetPath, requested } = await install(patchedBuild(), applyPatch);
-
-		expect(await Bun.file(targetPath).text()).toBe(next);
-		expect(requested).toEqual([patchUrl]);
-		expect(applyPatch).toHaveBeenCalledTimes(1);
-		if (process.platform !== "win32") expect((await fs.stat(targetPath)).mode & 0o777).toBe(0o755);
-		expect(await residue(dir)).toEqual([]);
-	});
-
-	const fallbacks: Array<{
-		when: string;
-		patch?: Partial<BuildPatch>;
-		patchBody?: string;
-		applyPatch?: BinaryPatchApplier;
-	}> = [
-		{ when: "the installed file is not the patch's base", patch: { fromSha256: Bun.SHA256.hash("another", "hex") } },
-		{ when: "the downloaded patch does not match its digest", patchBody: "x".repeat(Buffer.byteLength(patchBytes)) },
-		{
-			when: "the patch cannot be applied",
-			applyPatch: async () => {
-				throw new Error("patch made for other old data");
-			},
-		},
-		{ when: "the patched file does not match the build", applyPatch: applier("corrupted patch output") },
-	];
-	for (const { when, patch, patchBody, applyPatch } of fallbacks) {
-		it(`downloads the whole file when ${when}`, async () => {
-			const build = patchedBuild(patch);
-
-			const { dir, targetPath, requested } = await install(build, applyPatch ?? applier(), patchBody);
-
-			expect(await Bun.file(targetPath).text()).toBe(next);
-			expect(requested.at(-1)).toBe(build.download);
-			expect(await residue(dir)).toEqual([]);
-		});
-	}
 });
 
 describe("update-cli binary replacement", () => {
@@ -1413,41 +1142,6 @@ describe.skipIf(process.platform !== "darwin")("update-cli macOS live backup ima
 			live.kill();
 			await live.exited;
 		}
-	});
-});
-
-describe("update-cli binary-only release gating", () => {
-	it("honors an explicit omp.dist field from the registry manifest", () => {
-		expect(resolveReleaseDist({ omp: { dist: "binary" } })).toBe("binary");
-		expect(resolveReleaseDist({ omp: { dist: "npm" } })).toBe("npm");
-	});
-
-	it("treats unknown dist values as binary-only", () => {
-		expect(resolveReleaseDist({ omp: { dist: "cargo" } })).toBe("binary");
-	});
-
-	it("returns undefined when the manifest carries no dist field", () => {
-		expect(resolveReleaseDist({ version: "1.2.3" })).toBeUndefined();
-		expect(resolveReleaseDist({ omp: {} })).toBeUndefined();
-		expect(resolveReleaseDist(undefined)).toBeUndefined();
-	});
-
-	it("forces binary updates when dist is binary regardless of version", () => {
-		expect(shouldForceBinaryUpdate({ version: "1.2.3", dist: "binary" }, "1.2.2")).toBe(true);
-	});
-
-	it("allows package-manager updates across majors when dist is explicitly npm", () => {
-		expect(shouldForceBinaryUpdate({ version: "2.0.0", dist: "npm" }, "1.9.0")).toBe(false);
-	});
-
-	it("forces binary updates on a major bump without a dist field", () => {
-		expect(shouldForceBinaryUpdate({ version: "2.0.0" }, "1.9.0")).toBe(true);
-		expect(shouldForceBinaryUpdate({ version: "2.0.0-rc.1" }, "1.9.0")).toBe(true);
-	});
-
-	it("keeps package-manager updates within the same major and on downgrades", () => {
-		expect(shouldForceBinaryUpdate({ version: "1.10.0" }, "1.9.0")).toBe(false);
-		expect(shouldForceBinaryUpdate({ version: "1.0.0" }, "2.0.0")).toBe(false);
 	});
 });
 
@@ -1792,7 +1486,7 @@ describe("update-cli manager update recovery", () => {
 	const launcherPath = "C:/Users/test/AppData/Roaming/npm/omp.cmd";
 
 	function scriptedSteps(script: {
-		install: InstalledVersionVerification | Error | undefined;
+		install: InstalledVersionVerification | Error;
 		verify?: InstalledVersionVerification;
 		repair?: Error;
 	}): { steps: ManagerUpdateSteps; calls: string[] } {
@@ -1879,13 +1573,16 @@ describe("update-cli manager update recovery", () => {
 		expect(calls).toEqual(["install"]);
 	});
 
-	it("defers to a rename migration that already verified and reported its own result", async () => {
+	it("repairs a launcher that a failed install left unusable", async () => {
 		vi.spyOn(console, "log").mockImplementation(() => {});
-		const { steps, calls } = scriptedSteps({ install: undefined });
+		const { steps, calls } = scriptedSteps({
+			install: new Error("npm install failed with exit code 1"),
+			verify: { ok: false, path: launcherPath },
+		});
 
 		await updateViaManager(release, launcherPath, steps);
 
-		expect(calls).toEqual(["install"]);
+		expect(calls).toEqual(["install", "verify", `repair:${launcherPath}`]);
 	});
 
 	it("reports the failed repair with the install failure as its cause", async () => {

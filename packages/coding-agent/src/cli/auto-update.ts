@@ -4,11 +4,12 @@
  * An interactive launch hands its update check to {@link runAutoUpdate}. When
  * the check finds a newer release, the launch spawns a detached worker
  * (`__omp_worker_auto_update`) that installs it exactly as `omp update` would,
- * through whatever owns the install (build-service binary, bun, npm, Homebrew,
- * mise), while the launch shows the progress after the welcome banner's version
- * label. The worker outlives the session, so quitting mid-download never
- * strands a half-run package manager; the next launch simply starts the new
- * build.
+ * through whatever owns the install (a standalone binary swapped in place, bun,
+ * npm, Homebrew, mise), while the launch shows the progress after the welcome
+ * banner's version label. The version comes from the same GitHub Release the
+ * check resolved. The worker outlives the session, so quitting mid-download
+ * never strands a half-run package manager; the next launch simply starts the
+ * new build.
  *
  * One status file (`~/.omp/update/auto-update.json`) connects them. Only the
  * worker holding its lock writes it, and the OS drops that lock when the worker

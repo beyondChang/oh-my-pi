@@ -21,33 +21,18 @@ function answer(overrides: Record<string, unknown> = {}): Record<string, unknown
 		build: { id: "20261011-120000-abcdef0", version: "18.8.9", channel: "stable" },
 		file: { name: fileName, platform: "macos", arch: "arm64", kind: "binary", size: 205_765_664, sha256: sha("new") },
 		download: "https://r2.test/omp/18.8.9/omp-darwin-arm64?X-Amz-Signature=x",
-		patch: {
-			format: "file",
-			from: "20261001-120000-1234567",
-			from_sha256: sha("old"),
-			size: 6_700_636,
-			sha256: sha("patch"),
-			url: "https://r2.test/patches/p?X-Amz-Signature=y",
-		},
 		...overrides,
 	};
 }
 
 describe("build service answers", () => {
-	it("keeps a complete file patch and the version the check named as installed", () => {
-		const parsed = parseBuildAnswer(answer(), OMP_BUILD, host, "18.8.8");
+	it("keeps the version, file, and download the service answered", () => {
+		const parsed = parseBuildAnswer(answer(), OMP_BUILD, host);
 
 		expect(parsed).toEqual({
 			version: "18.8.9",
 			file: { name: fileName, size: 205_765_664, sha256: sha("new") },
 			download: "https://r2.test/omp/18.8.9/omp-darwin-arm64?X-Amz-Signature=x",
-			patch: {
-				fromSha256: sha("old"),
-				fromVersion: "18.8.8",
-				size: 6_700_636,
-				sha256: sha("patch"),
-				url: "https://r2.test/patches/p?X-Amz-Signature=y",
-			},
 		});
 	});
 
@@ -60,16 +45,6 @@ describe("build service answers", () => {
 		expect(() => parse(answer(file({ name: "omp-darwin-x64" })))).toThrow("omp-darwin-x64 is not omp-darwin-arm64");
 		expect(() => parse(answer({ download: "http://r2.test/omp" }))).toThrow("no HTTPS download");
 		expect(() => parse(answer({ build: { version: "latest" } }))).toThrow("no valid version");
-	});
-
-	it("installs the whole file when the patch is incomplete or not a file patch", () => {
-		const parse = (body: Record<string, unknown>) => parseBuildAnswer(body, OMP_BUILD, host);
-		const { url: _url, ...withoutUrl } = answer().patch as Record<string, unknown>;
-		expect(parse(answer({ patch: withoutUrl })).patch).toBeUndefined();
-		expect(parse(answer({ patch: { ...(answer().patch as object), format: "tree" } })).patch).toBeUndefined();
-		expect(
-			parse(answer({ patch: { ...(answer().patch as object), url: "http://r2.test/p" } })).patch,
-		).toBeUndefined();
 	});
 });
 
@@ -114,15 +89,14 @@ describe("fetchBuild", () => {
 		else process.env.PI_BUILD_URL = previousUrl;
 	});
 
-	it("asks the configured origin for the channel's newest build, naming the installed version", async () => {
+	it("asks the configured origin for the channel's newest build", async () => {
 		process.env.PI_BUILD_URL = "https://build.test/";
 		const requests: Array<{ url: string; userAgent: string | null; signal: AbortSignal | null | undefined }> = [];
 
-		const build = await fetchBuild(
+		await fetchBuild(
 			{ channel: "canary" },
 			{
 				host,
-				fromVersion: "18.8.8",
 				fetchImpl: async (input, init) => {
 					requests.push({
 						url: String(input),
@@ -135,12 +109,9 @@ describe("fetchBuild", () => {
 		);
 
 		expect(requests).toHaveLength(1);
-		expect(requests[0].url).toBe(
-			"https://build.test/api/products/omp/latest/macos-arm64?channel=canary&from_version=18.8.8",
-		);
+		expect(requests[0].url).toBe("https://build.test/api/products/omp/latest/macos-arm64?channel=canary");
 		expect(requests[0].userAgent).toBe(`omp/${VERSION}`);
 		expect(requests[0].signal).toBeInstanceOf(AbortSignal);
-		expect(build.patch?.fromVersion).toBe("18.8.8");
 	});
 
 	it("asks for one exact version without a channel", async () => {

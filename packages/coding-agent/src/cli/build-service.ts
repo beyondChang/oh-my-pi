@@ -173,26 +173,12 @@ export interface BuildFile {
 	sha256: string;
 }
 
-/** HDiffPatch single-stream patch (`HDIFFSF20`) from an installed file to {@link BuildFile}. */
-export interface BuildPatch {
-	/** Lowercase hex SHA-256 of the file the patch applies to. */
-	fromSha256: string;
-	/** Version the check named as installed (`from_version`), for progress output. */
-	fromVersion?: string;
-	size: number;
-	/** Lowercase hex SHA-256 of the patch itself. */
-	sha256: string;
-	/** Presigned HTTPS URL of the patch. */
-	url: string;
-}
-
-/** A checked build service answer. */
+/** A checked build answer: the whole file for this host, plus its version. */
 export interface BuildAnswer {
 	version: string;
 	file: BuildFile;
-	/** Presigned HTTPS URL of the whole file, valid for minutes. */
+	/** HTTPS URL of the whole file. */
 	download: string;
-	patch?: BuildPatch;
 }
 
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
@@ -215,30 +201,14 @@ function isHttpsUrl(value: unknown): value is string {
 	}
 }
 
-/** The answer's patch when it is a complete `file` patch; anything else installs the whole file. */
-function parseBuildPatch(patch: unknown, fromVersion: string | undefined): BuildPatch | undefined {
-	if (!isRecord(patch) || patch.format !== "file") return undefined;
-	if (!isSha256(patch.from_sha256) || !isSize(patch.size) || !isSha256(patch.sha256) || !isHttpsUrl(patch.url)) {
-		return undefined;
-	}
-	return { fromSha256: patch.from_sha256, fromVersion, size: patch.size, sha256: patch.sha256, url: patch.url };
-}
-
 /**
  * Check a build service answer for `product`'s file for `host`.
  *
  * Throws when the answer cannot be installed safely: a version that is not
  * semver, a file other than the product's for that version, a size or SHA-256
- * that is not exact, or a download that is not HTTPS. A `patch` is kept only
- * when it is a complete `format: "file"` patch; any other patch is dropped,
- * not an error. `fromVersion` is the `from_version` the check sent.
+ * that is not exact, or a download that is not HTTPS.
  */
-export function parseBuildAnswer(
-	body: unknown,
-	product: BuildProduct,
-	host: BuildHost,
-	fromVersion?: string,
-): BuildAnswer {
+export function parseBuildAnswer(body: unknown, product: BuildProduct, host: BuildHost): BuildAnswer {
 	if (!isRecord(body) || !isRecord(body.build)) throw new Error("answer has no build");
 	const version = body.build.version;
 	if (typeof version !== "string" || !SEMVER.test(version)) throw new Error("build has no valid version");
@@ -253,7 +223,6 @@ export function parseBuildAnswer(
 		version,
 		file: { name: fileName, size: file.size, sha256: file.sha256 },
 		download: body.download,
-		patch: parseBuildPatch(body.patch, fromVersion),
 	};
 }
 
@@ -263,8 +232,6 @@ export type BuildSelector = { channel: UpdateChannel } | { version: string };
 export interface FetchBuildOptions {
 	/** Defaults to {@link OMP_BUILD}. */
 	product?: BuildProduct;
-	/** Installed version to ask a patch from (`from_version`). */
-	fromVersion?: string;
 	timeoutMs?: number;
 	fetchImpl?: Fetch;
 	/** Defaults to {@link currentBuildHost}. */
@@ -283,7 +250,6 @@ export async function fetchBuild(selector: BuildSelector, options: FetchBuildOpt
 			: `versions/${encodeURIComponent(selector.version)}/${host.target}`;
 	const url = new URL(`${origin}/api/products/${product.id}/${route}`);
 	if ("channel" in selector) url.searchParams.set("channel", selector.channel);
-	if (options.fromVersion) url.searchParams.set("from_version", options.fromVersion);
 	const what = `${product.id} ${"channel" in selector ? `${selector.channel} build` : `build ${selector.version}`} for ${host.target}`;
 
 	const mapError = (err: unknown): unknown => {
@@ -324,7 +290,7 @@ export async function fetchBuild(selector: BuildSelector, options: FetchBuildOpt
 		throw new Error(`${origin} answered ${response.status} ${response.statusText} for the ${what}`);
 	}
 	try {
-		return parseBuildAnswer(body, product, host, options.fromVersion);
+		return parseBuildAnswer(body, product, host);
 	} catch (err) {
 		throw new Error(`Invalid answer from ${origin} for the ${what}: ${err instanceof Error ? err.message : err}`);
 	}
