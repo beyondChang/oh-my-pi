@@ -1,3 +1,4 @@
+import { uiText } from "../../i18n";
 import { padding, visibleWidth } from "../../utils";
 import { padToWidth } from "../../render/utils";
 import { type SgrMouseEvent } from "../../mouse";
@@ -26,12 +27,16 @@ import type { SetupScene, SetupSceneController, SetupSceneHost } from "./types";
 type ThemeMode = "curated" | "all";
 
 const CURATED_ITEMS: readonly SelectItem[] = [
-	{ value: "auto", label: "Match terminal", description: "Titanium in dark terminals, Light in light terminals" },
-	{ value: "theme:titanium", label: "Titanium", description: "Default dark theme" },
-	{ value: "theme:light", label: "Light", description: "Default light theme" },
-	{ value: "colorblind", label: "Colorblind colors", description: "Adjust red/green contrast" },
-	{ value: "ansi", label: "ANSI-safe", description: "ASCII glyphs with the dark terminal theme" },
-	{ value: "browse", label: "Browse all…", description: "Show every built-in and custom theme" },
+	{
+		value: "auto",
+		label: uiText("Match terminal"),
+		description: uiText("Titanium in dark terminals, Light in light terminals"),
+	},
+	{ value: "theme:titanium", label: "Titanium", description: uiText("Default dark theme") },
+	{ value: "theme:light", label: "Light", description: uiText("Default light theme") },
+	{ value: "colorblind", label: uiText("Colorblind colors"), description: uiText("Adjust red/green contrast") },
+	{ value: "ansi", label: uiText("ANSI-safe"), description: uiText("ASCII glyphs with the dark terminal theme") },
+	{ value: "browse", label: uiText("Browse all…"), description: uiText("Show every built-in and custom theme") },
 ];
 
 function fillStyledLine(content: string, width: number): string {
@@ -96,7 +101,7 @@ function renderThemePreview(width: number): string[] {
 function describeThemePreview(): NativeNode {
 	return col(
 		[
-			text([span("Preview", "strong")]),
+			text([span(uiText("Preview"), "strong")]),
 			text([
 				span(`${theme.status.success} success`, "success"),
 				span("  "),
@@ -106,7 +111,7 @@ function describeThemePreview(): NativeNode {
 				span("  "),
 				span("accent", "accent"),
 			]),
-			text([span("Status line", "muted")]),
+			text([span(uiText("Status line"), "muted")]),
 			node("status", {}, [
 				node("seg", { spans: [span(`${theme.icon.model} sonnet`, "statusLineModel")], side: "left" }),
 				node("seg", { spans: [span("~/project", "statusLinePath")], side: "left" }),
@@ -114,7 +119,7 @@ function describeThemePreview(): NativeNode {
 				node("seg", { spans: [span(`${theme.icon.context} 42%`, "statusLineContext")], side: "right" }),
 				node("seg", { spans: [span(`${theme.icon.cost} 0.18`, "statusLineCost")], side: "right" }),
 			]),
-			text([span("Editor", "muted")]),
+			text([span(uiText("Editor"), "muted")]),
 			node("input", {
 				text: "Ask anything, edit files, run tools",
 				cursor: "Ask anything, edit files, run tools".length,

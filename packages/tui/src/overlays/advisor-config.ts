@@ -51,6 +51,7 @@ import type { TspPrefsProps, TspPrefsRow, TspSpan } from "@oh-my-pi/pi-wire";
 import { col, node, span, text } from "../native/describe";
 import type { DescribeContext, NativeChild, NativeNode, NativeUiEvent } from "../native/node";
 import { actionBar, actionButton, actionHint, hintsRow, type NativeHint, overlayCard } from "../native/overlay";
+import { uiPrefs, uiText } from "../i18n";
 import {
 	CLOSE_ACTION,
 	pickerAction,
@@ -677,7 +678,7 @@ export class AdvisorConfigOverlayComponent implements Component {
 		} else if (editor) {
 			children = [editor];
 		}
-		const root = node("prefs", props, children);
+		const root = node("prefs", uiPrefs(props), children);
 		this.#nativePrefs = { signature, editor, node: root };
 		return root;
 	}
@@ -750,7 +751,7 @@ export class AdvisorConfigOverlayComponent implements Component {
 				preview: "below",
 				placeholder: "Search models…",
 				...browser.pickerRows(catalogue, order, this.#modelCurrent),
-				empty: "No models available",
+				empty: uiText("No models available"),
 				actions: [
 					pickerAction("use", "Use for advisor", "enter", { primary: true }),
 					browser.query.length > 0 ? { ...CLOSE_ACTION, label: "Clear search" } : CLOSE_ACTION,

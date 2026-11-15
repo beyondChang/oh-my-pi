@@ -13,12 +13,13 @@
  * candidates to that kind. Anything that is not a standalone `#<number>` token
  * keeps falling through to the existing prompt-action menu.
  */
+import { uiText } from "../i18n";
 import type { AutocompleteItem } from "../index";
 
 /** Candidate kinds, in default display order. */
 const GITHUB_REF_KINDS = [
-	{ qualifier: "pr", scheme: "pr", label: "PR", description: "GitHub pull request" },
-	{ qualifier: "issue", scheme: "issue", label: "Issue", description: "GitHub issue" },
+	{ qualifier: "pr", scheme: "pr", label: "PR", description: uiText("GitHub pull request") },
+	{ qualifier: "issue", scheme: "issue", label: "Issue", description: uiText("GitHub issue") },
 ] as const;
 
 export interface GithubRefContext {

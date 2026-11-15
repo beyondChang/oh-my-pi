@@ -3,6 +3,7 @@
  * card heads, error views, notes and notices. No layout: every helper returns
  * semantic nodes/spans only, with ANSI-free, sanitized text.
  */
+import { uiText } from "../i18n";
 import * as path from "node:path";
 import type { TspSpan, TspText, TspTone } from "@oh-my-pi/pi-wire";
 import { ansi, code, compact, keyed, node, row, span, text } from "../native/describe";
@@ -380,7 +381,7 @@ export function diagnosticsSection(
 	return node(
 		"section",
 		{
-			head: [span("Diagnostics")],
+			head: [span(uiText("Diagnostics"))],
 			tone: diagnostics.errored ? "error" : "warning",
 			role: "omp.tool.diagnostics",
 		},

@@ -89,7 +89,8 @@ import { SplitPane } from "../components/layout/split-pane";
 import { Stack } from "../components/layout/stack";
 import { node, span, stableKey, text } from "../native/describe";
 import { type DescribeContext, leafKey, type NativeChild, type NativeNode, type NativeUiEvent } from "../native/node";
-import { hintsRow, type NativeHint, overlayCard } from "../native/overlay";
+import { hintsRow, type NativeHint, overlayCard, sectionHead } from "../native/overlay";
+import { uiText } from "../i18n";
 import { CLOSE_ACTION, picker, pickerQuery } from "../native/picker";
 import { Input } from "../components/input";
 
@@ -125,19 +126,19 @@ type HubViewMode = "roster" | "tree";
 /** The roster's status scopes: what a phone filters agents by. */
 type StatusScope = "all" | "running" | "done" | "parked";
 const STATUS_SCOPES: readonly { id: StatusScope; label: string; icon: string; status?: AgentRecordLike["status"] }[] = [
-	{ id: "all", label: "All", icon: "list" },
-	{ id: "running", label: "Running", icon: "play", status: "running" },
-	{ id: "done", label: "Done", icon: "check", status: "idle" },
-	{ id: "parked", label: "Parked", icon: "pause", status: "parked" },
+	{ id: "all", label: uiText("All"), icon: "list" },
+	{ id: "running", label: uiText("Running"), icon: "play", status: "running" },
+	{ id: "done", label: uiText("Done"), icon: "check", status: "idle" },
+	{ id: "parked", label: uiText("Parked"), icon: "pause", status: "parked" },
 ];
 
 const SECTION_TABS = [
-	{ id: "agents", label: "1 Agents" },
-	{ id: "activity", label: "2 Activity" },
+	{ id: "agents", label: uiText("1 Agents") },
+	{ id: "activity", label: uiText("2 Activity") },
 ] as const satisfies ReadonlyArray<{ id: AgentHubSection; label: string }>;
 const VIEW_TABS = [
-	{ id: "roster", label: "Flat" },
-	{ id: "tree", label: "By parent" },
+	{ id: "roster", label: uiText("Flat") },
+	{ id: "tree", label: uiText("By parent") },
 ] as const satisfies ReadonlyArray<{ id: HubViewMode; label: string }>;
 const AGENT_HINTS: Readonly<Record<HubViewMode, readonly NativeHint[]>> = {
 	roster: agentHints("by parent"),
@@ -164,16 +165,16 @@ const PICKER_TABS = [
 ] as const satisfies ReadonlyArray<{ id: AgentHubSection; label: string }>;
 /** Roster fact columns; lower priorities hide first on narrow sheets. */
 const AGENT_COLUMNS: readonly TspPickerColumn[] = [
-	{ id: "cost", head: "Cost", format: "price", priority: 6 },
-	{ id: "time", head: "Time", format: "elapsed", priority: 5 },
-	{ id: "req", head: "Req", format: "num", priority: 2 },
-	{ id: "tools", head: "Tools", format: "num", priority: 1 },
-	{ id: "tok", head: "Tok", format: "num", priority: 3 },
-	{ id: "ctx", head: "Ctx", format: "bar", priority: 4 },
+	{ id: "cost", head: uiText("Cost"), format: "price", priority: 6 },
+	{ id: "time", head: uiText("Time"), format: "elapsed", priority: 5 },
+	{ id: "req", head: uiText("Req"), format: "num", priority: 2 },
+	{ id: "tools", head: uiText("Tools"), format: "num", priority: 1 },
+	{ id: "tok", head: uiText("Tok"), format: "num", priority: 3 },
+	{ id: "ctx", head: uiText("Ctx"), format: "bar", priority: 4 },
 ];
 const ACTIVITY_COLUMNS: readonly TspPickerColumn[] = [
-	{ id: "agent", head: "Agent", format: "text", priority: 2 },
-	{ id: "at", head: "Time", format: "dim", priority: 1 },
+	{ id: "agent", head: uiText("Agent"), format: "text", priority: 2 },
+	{ id: "at", head: uiText("Time"), format: "dim", priority: 1 },
 ];
 /** What the roster/activity projections contribute to the picker (the shared head is added once). */
 type PickerBody = Omit<Partial<TspPickerProps>, "title">;
@@ -916,7 +917,7 @@ export class AgentHubOverlayComponent<TRecord extends AgentRecordLike = AgentRec
 	#describePicker(meter: boolean): NativeNode {
 		const activity = this.#section === "activity";
 		const props: TspPickerProps = {
-			title: "Agents",
+			title: uiText("Agents"),
 			subtitle: this.#pickerSubtitle(),
 			icon: "users",
 			size: "lg",
@@ -931,7 +932,7 @@ export class AgentHubOverlayComponent<TRecord extends AgentRecordLike = AgentRec
 	/** Roster totals: `$0.389 · 18.7s · 6 req · 114K tok`. */
 	#pickerSubtitle(): string {
 		const metrics = this.#aggregate;
-		if (metrics.reportedAgents === 0) return "No usage reported yet";
+		if (metrics.reportedAgents === 0) return uiText("No usage reported yet");
 		const parts = [formatCost(metrics.cost)];
 		if (metrics.durationMs > 0) parts.push(formatDuration(metrics.durationMs));
 		parts.push(`${formatNumber(metrics.requests)} req`, `${formatNumber(metrics.tokens)} tok`);
@@ -944,14 +945,14 @@ export class AgentHubOverlayComponent<TRecord extends AgentRecordLike = AgentRec
 		const actions: TspPickerAction[] = [
 			{
 				id: "open",
-				label: "Open transcript",
+				label: uiText("Open transcript"),
 				keys: ["enter"],
 				primary: true,
 				disabled: selected ? undefined : true,
 			},
 			{
 				id: "revive",
-				label: "Revive",
+				label: uiText("Revive"),
 				keys: ["r"],
 				disabled:
 					readOnly ??
@@ -959,9 +960,15 @@ export class AgentHubOverlayComponent<TRecord extends AgentRecordLike = AgentRec
 						? undefined
 						: "Only parked or killed agents can be revived"),
 			},
-			{ id: "kill", label: "Kill", keys: ["x"], danger: true, disabled: readOnly ?? (selected ? undefined : true) },
-			{ id: "view", label: "By parent", keys: ["t"], on: this.#viewMode === "tree" },
-			{ id: "filter", label: "Filter", keys: ["/"] },
+			{
+				id: "kill",
+				label: uiText("Kill"),
+				keys: ["x"],
+				danger: true,
+				disabled: readOnly ?? (selected ? undefined : true),
+			},
+			{ id: "view", label: uiText("By parent"), keys: ["t"], on: this.#viewMode === "tree" },
+			{ id: "filter", label: uiText("Filter"), keys: ["/"] },
 			CLOSE_ACTION,
 		];
 		return {
@@ -969,7 +976,7 @@ export class AgentHubOverlayComponent<TRecord extends AgentRecordLike = AgentRec
 			layout: this.#viewMode === "tree" ? "tree" : "rows",
 			preview: "side",
 			...pickerQuery(this.#agentFilterEditing || this.#agentFilter.getValue() ? this.#agentFilter : null),
-			placeholder: "Filter agents…",
+			placeholder: uiText("Filter agents…"),
 			scopes: this.#statusScopes(),
 			scope: this.#statusScope,
 			columns: AGENT_COLUMNS,
@@ -977,7 +984,9 @@ export class AgentHubOverlayComponent<TRecord extends AgentRecordLike = AgentRec
 			selected: selected?.id ?? null,
 			total: this.#sessionRefCount,
 			state: this.#rows.length === 0 && this.#loadingPersistedSubagents ? "loading" : "ready",
-			empty: "No agents in this session. Finished, parked and killed subagents stay with the session that created them.",
+			empty: uiText(
+				"No agents in this session. Finished, parked and killed subagents stay with the session that created them.",
+			),
 			actions,
 			focus: "list",
 		};
@@ -1158,7 +1167,9 @@ export class AgentHubOverlayComponent<TRecord extends AgentRecordLike = AgentRec
 			);
 		});
 		if (rows.length === 0) rows.push(text([span("No response or tool activity yet", "dim")]));
-		out.push(node("section", { head: "Recent activity", role: "omp.hub.activity" }, rows, "recentActivity"));
+		out.push(
+			node("section", { head: sectionHead("Recent activity"), role: "omp.hub.activity" }, rows, "recentActivity"),
+		);
 		return out;
 	}
 
@@ -1184,7 +1195,7 @@ export class AgentHubOverlayComponent<TRecord extends AgentRecordLike = AgentRec
 			columns: ACTIVITY_COLUMNS,
 			items: this.#activityRows.map(activity => this.#pickerActivityItem(activity)),
 			selected: selected?.id ?? null,
-			empty: "No agent activity recorded yet",
+			empty: uiText("No agent activity recorded yet"),
 			actions: [
 				{
 					id: "open",

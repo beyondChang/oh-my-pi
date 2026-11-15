@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import type { Component } from "../tui";
 import { Text } from "../components/text";
 import { visibleWidth } from "../utils";
@@ -853,7 +854,7 @@ export const waitToolRenderer = {
 	inline: true,
 	mergeCallAndResult: true,
 	activitySummary(): ToolActivitySummary {
-		return { label: "Wait", detail: "Background work or peer message" };
+		return { label: uiText("Wait"), detail: uiText("Background work or peer message") };
 	},
 	renderCall: waitRenderCall,
 	describeCall(): NativeToolView {

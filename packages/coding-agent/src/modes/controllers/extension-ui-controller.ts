@@ -70,6 +70,7 @@ import { setExtensionTerminalTitle, setSessionTerminalTitle } from "../../utils/
 import { getEditorCommand, openInEditor } from "../../utils/external-editor";
 import { launchTerminal } from "../../subprocess/terminal-launch";
 import { approvalAnswerForChoice, approvalChoiceLabels, approvalOnceLabel } from "../../tools/approval";
+import { localizeUiText } from "../../i18n";
 
 const MAX_WIDGET_LINES = 10;
 
@@ -881,7 +882,7 @@ export class ExtensionUiController {
 		return {
 			isBlocked: () => draftEditor.getText().length > 0,
 			handleInput: (keyData: string) => draftEditor.handleDraftEdit(keyData),
-			hint: "typing edits your prompt",
+			hint: localizeUiText("typing edits your prompt"),
 			// Show the draft's insertion cursor while it owns input; drop it
 			// once the dialog controls take over.
 			syncPresentation: (blocked: boolean) => {

@@ -9,9 +9,19 @@
 import type { TspProps, TspSpan, TspText } from "@oh-my-pi/pi-wire";
 import { formatTooltipKey, type KeyName } from "../key-hint-format";
 import { getKeybindings, type Keybinding } from "../keybindings";
+import { uiText } from "../i18n";
 import { card, kbd, keyNames, list, node, row, span, text } from "./describe";
+
 import type { NativeChild, NativeNode } from "./node";
 import { nativeButtons } from "./state";
+
+/**
+ * Localize a `section` head: a string is chrome (a label the sheet composed),
+ * while span arrays carry data the caller styled, so they pass through.
+ */
+export function sectionHead(head: TspText): TspText {
+	return typeof head === "string" ? uiText(head) : head;
+}
 
 /** Below this many columns a centered sheet with tall content fills the pane instead of floating with margins. */
 export const NARROW_SHEET_COLS = 100;
@@ -35,7 +45,7 @@ export function actionHint(actions: Keybinding | readonly Keybinding[], label: s
 		const [key] = bindings.getKeys(action);
 		if (key) keys.push(key);
 	}
-	return keys.length > 0 ? { keys, label } : undefined;
+	return keys.length > 0 ? { keys, label: uiText(label) } : undefined;
 }
 
 /**
@@ -48,7 +58,7 @@ export function hintsRow(hints: readonly (NativeHint | undefined)[], key = "hint
 	for (const hint of hints) {
 		if (!hint) continue;
 		const group: NativeChild[] = hint.keys.map(k => kbd(k));
-		group.push(text([span(hint.label, "muted")]));
+		group.push(text([span(uiText(hint.label), "muted")]));
 		children.push(row(group, { gap: "xs", align: "center" }));
 	}
 	return node("row", { gap: "md", wrap: true, role: "omp.overlay.hints" }, children, key);
@@ -69,7 +79,7 @@ export function overlayCard(
 	children: readonly NativeChild[],
 	props?: Omit<TspProps<"card">, "head" | "role">,
 ): NativeNode {
-	const title = typeof head === "string" ? head.replace(/\s+/g, " ").trim() : head;
+	const title = typeof head === "string" ? uiText(head).replace(/\s+/g, " ").trim() : head;
 	return card({ ...props, role, head: title === "" ? undefined : title }, children);
 }
 
@@ -118,7 +128,8 @@ export interface ActionButtonOptions {
  */
 export function actionButton(label: string, act: string, options: ActionButtonOptions = {}): NativeNode {
 	const { keys, href, disabled, busy, icon } = options;
-	const title = options.title ?? (keys ? `${label}  ${formatTooltipKey(keys)}` : label);
+	const shown = uiText(label);
+	const title = options.title ?? (keys ? `${shown}  ${formatTooltipKey(keys)}` : shown);
 	const tone = disabled === undefined ? options.tone : "muted";
 	const key = options.key ?? act;
 	if (nativeButtons()) {
@@ -126,7 +137,7 @@ export function actionButton(label: string, act: string, options: ActionButtonOp
 			"button",
 			{
 				role: "omp.btn",
-				text: label,
+				text: shown,
 				actions: { click: act },
 				title,
 				...(keys ? { keys: keyNames(keys) } : {}),
@@ -143,7 +154,7 @@ export function actionButton(label: string, act: string, options: ActionButtonOp
 	}
 	const children: NativeChild[] = [];
 	if (busy) children.push(node("spinner", { style: "dots" }));
-	children.push(text(label));
+	children.push(text(shown));
 	if (icon) children.push(node("icon", { name: icon }, undefined, "icon"));
 	if (keys) children.push(kbd(keys));
 	return node(
@@ -167,7 +178,7 @@ export function actionButton(label: string, act: string, options: ActionButtonOp
  * `act` (default `close`), which the component routes to its Esc path.
  */
 export function escCloseButton(act = "close", key = "esc-close"): NativeNode {
-	const title = `Close  ${formatTooltipKey("escape")}`;
+	const title = `${uiText("Close")}  ${formatTooltipKey("escape")}`;
 	if (nativeButtons()) {
 		return node(
 			"button",

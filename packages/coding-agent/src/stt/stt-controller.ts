@@ -14,6 +14,7 @@ import { evaluateSubmitTrigger } from "./submit-trigger";
 import { encodePcm16Wav, floatToPcm16 } from "./wav";
 
 import { cfgSttLanguage, cfgSttSubmitTrigger } from "./settings";
+import { localizeUiText } from "../i18n";
 
 export type SttState = "idle" | "recording" | "transcribing";
 
@@ -323,7 +324,7 @@ export class STTController {
 		}
 
 		this.#setState("transcribing", options);
-		options.showStatus("Transcribing...");
+		options.showStatus(localizeUiText("Transcribing..."));
 		try {
 			recorder?.stop();
 		} catch (err) {

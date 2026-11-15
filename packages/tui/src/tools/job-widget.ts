@@ -12,6 +12,7 @@
  * ANSI lines, and never see a rule or a regex.
  */
 
+import { uiText } from "../i18n";
 import type { TspChartMark, TspChartProps, TspPropNode, TspSpan, TspTone } from "@oh-my-pi/pi-wire";
 import { renderProgressBar } from "../components/progress-bar";
 import { fitSparkValues, renderSparkline } from "../components/sparkline";
@@ -800,7 +801,7 @@ function labelled(label: string, content: NativeNode, role: string): NativeNode 
 }
 
 function waiting(): NativeNode {
-	return text([span("waiting for data", "dim")], { wrap: "none" });
+	return text([span(uiText("waiting for data"), "dim")], { wrap: "none" });
 }
 
 /** `p50 41 ms ▼ 12% · errors 0`: dim labels, values in their tone, toned trends. */

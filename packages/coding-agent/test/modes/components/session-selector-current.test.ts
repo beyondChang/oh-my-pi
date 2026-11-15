@@ -2,9 +2,12 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { SessionSelectorComponent } from "@oh-my-pi/pi-tui/overlays/session-selector";
 import { initTheme, theme } from "@oh-my-pi/pi-tui/theme";
 import type { SessionInfo } from "@oh-my-pi/pi-coding-agent/session/session-listing";
+import { initializeLanguage } from "@oh-my-pi/pi-coding-agent/i18n";
 
 beforeAll(async () => {
 	await initTheme();
+	// This suite asserts the English header labels; pin the language before the selector renders.
+	initializeLanguage("en");
 });
 
 afterAll(async () => {

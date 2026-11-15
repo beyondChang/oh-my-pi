@@ -5,6 +5,7 @@
  * YAML. Writes show the `previous → value` change, its scope (session or
  * saved), and whether the user approved it.
  */
+import { uiText } from "../i18n";
 import type { Component } from "../tui";
 import { renderStatusLine } from "../render";
 import {
@@ -116,8 +117,8 @@ export function describeCfgWrite(
 	if (result?.isError) return errorView("Config", firstText(result) || "Settings write failed.", path);
 	const head = toolHead("Config", path);
 	head.push(span(" "), span(save ? "persist" : "session", save ? "accent strong" : "muted"));
-	if (details?.outcome === "declined") head.push(span(" "), span("declined", "warning strong"));
-	if (details?.outcome === "unchanged") head.push(span(" "), span("unchanged", "muted"));
+	if (details?.outcome === "declined") head.push(span(" "), span(uiText("declined"), "warning strong"));
+	if (details?.outcome === "unchanged") head.push(span(" "), span(uiText("unchanged"), "muted"));
 	const next = span(plainText(details?.value ?? content?.trim() ?? "…"), "toolOutput");
 	const change = details
 		? [span(plainText(details.previous), "dim"), span(" → ", "dim"), next]

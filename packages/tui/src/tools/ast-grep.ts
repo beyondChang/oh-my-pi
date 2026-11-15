@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import type { Component } from "../tui";
 import { Text } from "../components/text";
 import type { Theme } from "../theme/theme";
@@ -242,7 +243,7 @@ export const astGrepToolRenderer = {
 		]);
 		meta.push(`searched ${filesSearched}`);
 		const head = toolHead("AST Grep", pattern, ...meta);
-		if (limitReached) head.push(span(" limit reached", "warning"));
+		if (limitReached) head.push(span(uiText(" limit reached"), "warning"));
 		const allLines = (details?.displayContent ?? resultText(result)).split("\n");
 		const kept = groupLineIndicesByBlank(allLines)
 			.filter(indices => {

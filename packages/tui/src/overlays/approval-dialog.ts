@@ -38,6 +38,7 @@ import { actionBar, actionButton } from "../native/overlay";
 import { PREVIEW_LIMITS, sanitizeDisplayLines } from "../render/render-utils";
 import { theme } from "../theme/theme";
 import { CountdownTimer } from "../chrome/countdown-timer";
+import { uiText } from "../i18n";
 
 /** Detail rows shown before the rest scrolls, so the composer beneath keeps its room. */
 const MAX_DETAIL_ROWS: number = PREVIEW_LIMITS.COLLAPSED_ITEMS;
@@ -135,11 +136,15 @@ export class ApprovalDialogComponent implements Component {
 		private readonly options: ApprovalDialogOptions = {},
 	) {
 		const lines = sanitizeDisplayLines(prompt);
-		const title = lines[0] ?? "";
+		// The title carries the tool name and the details carry paths and command text:
+		// the translator only rewrites strings it knows verbatim, so identifiers survive.
+		const title = uiText(lines[0] ?? "");
 		this.#title = title;
-		this.#summary = promptDetails(lines);
+		this.#summary = promptDetails(lines).map(uiText);
 		this.#full =
-			options.fullPrompt === undefined ? undefined : promptDetails(sanitizeDisplayLines(options.fullPrompt));
+			options.fullPrompt === undefined
+				? undefined
+				: promptDetails(sanitizeDisplayLines(options.fullPrompt)).map(uiText);
 		this.#choices = this.#buildChoices();
 		this.#choice = this.#choices.findIndex(choice => choice.answer === "once");
 		this.#panel = new OverlayPanel(title, "omp.overlay.approval");
@@ -309,7 +314,7 @@ export class ApprovalDialogComponent implements Component {
 		const shown = drafting ? this.#choices.length - 1 : this.#choice;
 		this.#choiceRows.setLines(
 			this.#choices.map((choice, index) => {
-				const label = drafting && choice.answer === "deny" ? DENY_AND_SEND_LABEL : choice.label;
+				const label = uiText(drafting && choice.answer === "deny" ? DENY_AND_SEND_LABEL : choice.label);
 				if (index !== shown) return truncateToWidth(`  ${label}`, innerWidth, Ellipsis.Unicode);
 				const color = choice.answer === "deny" ? "error" : "accent";
 				const row = truncateToWidth(`${theme.nav.cursor} ${label}`, innerWidth, Ellipsis.Unicode);
@@ -332,22 +337,22 @@ export class ApprovalDialogComponent implements Component {
 		if (this.#native && this.#nativeDrafting === drafting) return this.#native;
 		const cancelKey = getKeybindings().getKeys("tui.select.cancel")[0];
 		const approveKey = appApproveKeys()[0];
-		const deny = actionButton("Deny", "deny", {
+		const deny = actionButton(uiText("Deny"), "deny", {
 			...(cancelKey ? { keys: cancelKey } : {}),
 			tone: "error",
-			title: `Deny this call${cancelKey ? `  ${formatTooltipKey(cancelKey)}` : ""}`,
+			title: `${uiText("Deny this call")}${cancelKey ? `  ${formatTooltipKey(cancelKey)}` : ""}`,
 		});
-		const approve = actionButton(this.options.grants?.length ? "Approve Once" : "Approve", "approve", {
+		const approve = actionButton(uiText(this.options.grants?.length ? "Approve Once" : "Approve"), "approve", {
 			...(approveKey ? { keys: approveKey } : {}),
 			tone: "accent",
-			title: `Approve this call${approveKey ? `  ${formatTooltipKey(approveKey)}` : ""}`,
+			title: `${uiText("Approve this call")}${approveKey ? `  ${formatTooltipKey(approveKey)}` : ""}`,
 		});
 		const expandKey = appToolsExpandKey();
 		const expand = this.#full
 			? [
-					actionButton(this.#expanded ? "Less" : "Details", "expand", {
+					actionButton(uiText(this.#expanded ? "Less" : "Details"), "expand", {
 						keys: expandKey,
-						title: `${this.#expanded ? "Summarize" : "Show every detail of"} this call  ${formatTooltipKey(expandKey)}`,
+						title: `${uiText(this.#expanded ? "Summarize this call" : "Show every detail of this call")}  ${formatTooltipKey(expandKey)}`,
 					}),
 				]
 			: [];
@@ -363,7 +368,7 @@ export class ApprovalDialogComponent implements Component {
 		}
 		const choices = this.#choices.map(choice =>
 			item(choice.answer, {
-				label: choice.label,
+				label: uiText(choice.label),
 				role: "omp.approval.choice",
 				tone: choice.answer === "deny" ? "error" : "accent",
 			}),
@@ -406,13 +411,15 @@ export class ApprovalDialogComponent implements Component {
 	#footerHint(overflows: boolean, drafting: boolean): string {
 		const approve = formatKeyHints(appApproveKeys());
 		const expand = this.#full
-			? ` · ${formatKeyHints([appToolsExpandKey()])} ${this.#expanded ? "less" : "details"}`
+			? ` · ${formatKeyHints([appToolsExpandKey()])} ${uiText(this.#expanded ? "less" : "details")}`
 			: "";
-		const keys = `${approve} approve · ${editorKey("tui.select.cancel")} deny${expand}`;
-		if (drafting) return `${editorKey("tui.input.submit")} deny and send · ${keys}`;
-		const choose = `${editorKeys("tui.select.up", "tui.select.down")} choose · ${editorKey("tui.select.confirm")} select`;
-		const scroll = overflows ? ` · ${editorKeys("tui.select.pageUp", "tui.select.pageDown")} scroll` : "";
-		return `${choose} · ${keys}${scroll}${this.options.draft ? " · type to deny and steer" : ""}`;
+		const keys = `${approve} ${uiText("approve")} · ${editorKey("tui.select.cancel")} ${uiText("deny")}${expand}`;
+		if (drafting) return `${editorKey("tui.input.submit")} ${uiText("deny and send")} · ${keys}`;
+		const choose = `${editorKeys("tui.select.up", "tui.select.down")} ${uiText("choose")} · ${editorKey("tui.select.confirm")} ${uiText("select")}`;
+		const scroll = overflows
+			? ` · ${editorKeys("tui.select.pageUp", "tui.select.pageDown")} ${uiText("scroll")}`
+			: "";
+		return `${choose} · ${keys}${scroll}${this.options.draft ? ` · ${uiText("type to deny and steer")}` : ""}`;
 	}
 
 	#scroll(delta: number): void {

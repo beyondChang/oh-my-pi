@@ -1,3 +1,4 @@
+import { uiText } from "../../i18n";
 import { centerLine, visibleWidth } from "../../utils";
 import { padToWidth } from "../../render/utils";
 import { APP_NAME, VERSION } from "@oh-my-pi/pi-utils";
@@ -263,7 +264,7 @@ export function describeSetupSplash(): NativeNode {
 			lockupNode(VERSION),
 			node("spacer", { grow: 1 }, undefined, "bottom"),
 			keyed(
-				row([text([span("Press", "muted")]), kbd("enter"), text([span("to begin", "muted")])], {
+				row([text([span("Press", "muted")]), kbd("enter"), text([span(uiText("to begin"), "muted")])], {
 					align: "center",
 					gap: "xs",
 					role: "omp.setup.hint",

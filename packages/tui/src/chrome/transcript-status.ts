@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import type { TspSpan } from "@oh-my-pi/pi-wire";
 import { Text } from "../components/text";
 import { col } from "../native/describe";
@@ -42,7 +43,7 @@ export class TranscriptStatusBlock extends TranscriptBlock {
 		super();
 		for (const row of rows) {
 			const styled = row.parts.flatMap(part =>
-				part ? [part.color ? theme.fg(part.color, part.text) : part.text] : [],
+				part ? [part.color ? theme.fg(part.color, uiText(part.text)) : uiText(part.text)] : [],
 			);
 			this.addChild(new Text(styled.join(" "), row.indent ?? 1, 0));
 		}

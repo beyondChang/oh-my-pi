@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import { Text } from "../components/text";
 import type { Theme } from "../theme/theme";
 import { replaceTabs, truncateToWidth, shortenPath } from "../render/render-utils";
@@ -396,9 +397,12 @@ export const runExperimentToolRenderer = {
 					status.node,
 					details.tailOutput.trim() ? ansi(details.tailOutput, { follow: true }) : undefined,
 					details.truncation && details.fullOutputPath
-						? text([span("Full output: ", "warning"), span(shortenPath(details.fullOutputPath), "path")], {
-								truncate: "middle",
-							})
+						? text(
+								[span(uiText("Full output: "), "warning"), span(shortenPath(details.fullOutputPath), "path")],
+								{
+									truncate: "middle",
+								},
+							)
 						: undefined,
 				]),
 			};

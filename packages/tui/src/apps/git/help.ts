@@ -10,6 +10,7 @@
 import { formatKeyHint } from "../../app-keybindings";
 import type { KeyName } from "../../key-hint-format";
 import { matchesKey } from "../../keys";
+import { uiText } from "../../i18n";
 import { col, node, span } from "../../native/describe";
 import type { NativeNode, NativeUiEvent } from "../../native/node";
 import { actionBar, actionButton } from "../../native/overlay";
@@ -91,17 +92,20 @@ export class GitHelpSheet implements Component {
 				...GROUPS.map(group =>
 					node(
 						"section",
-						{ head: group.title, role: "omp.hotkeys.group" },
+						{ head: uiText(group.title), role: "omp.hotkeys.group" },
 						[
 							node("table", {
 								role: "omp.hotkeys.table",
 								cols: [
-									{ id: "keys", head: "Keys" },
-									{ id: "does", head: "Action", grow: 1 },
+									{ id: "keys", head: uiText("Keys") },
+									{ id: "does", head: uiText("Action"), grow: 1 },
 								],
 								rows: group.rows.map((row, index) => ({
 									id: String(index),
-									cells: { keys: row.keys.map(key => span(formatKeyHint(key), "key")), does: row.label },
+									cells: {
+										keys: row.keys.map(key => span(formatKeyHint(key), "key")),
+										does: uiText(row.label),
+									},
 								})),
 							}),
 						],

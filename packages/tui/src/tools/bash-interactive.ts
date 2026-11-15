@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import type * as XtermModule from "@oh-my-pi/pi-utils/vterm";
 import type { Terminal as XtermTerminalType } from "@oh-my-pi/pi-utils/vterm";
 import type { TspSpan } from "@oh-my-pi/pi-wire";
@@ -266,10 +267,10 @@ export class BashInteractiveOverlayComponent implements Component {
 
 	#stateSpan(): TspSpan {
 		if (this.#state === "running") return span("running", "warning");
-		if (this.#state === "timed_out") return span("timed out", "warning");
-		if (this.#state === "killed") return span("killed", "warning");
-		if (this.#exitCode === 0) return span("exit 0", "success");
-		if (this.#exitCode === undefined) return span("exited", "warning");
+		if (this.#state === "timed_out") return span(uiText("timed out"), "warning");
+		if (this.#state === "killed") return span(uiText("killed"), "warning");
+		if (this.#exitCode === 0) return span(uiText("exit 0"), "success");
+		if (this.#exitCode === undefined) return span(uiText("exited"), "warning");
 		return span(`exit ${this.#exitCode}`, "error");
 	}
 
@@ -297,11 +298,11 @@ export class BashInteractiveOverlayComponent implements Component {
 			const footer =
 				this.#state === "running"
 					? actionBar([
-							text([span("Input forwarded to PTY", "dim")]),
+							text([span(uiText("Input forwarded to PTY"), "dim")]),
 							null,
 							actionButton("Force kill", KILL_ACTION, { keys: "escape", tone: "error" }),
 						])
-					: actionBar([text([span("Session finished", "dim")])]);
+					: actionBar([text([span(uiText("Session finished"), "dim")])]);
 			return col([head, ansi(screen.join("\n"), { cols }), footer], { gap: "sm" });
 		});
 	}

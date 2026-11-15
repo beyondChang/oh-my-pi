@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import {
 	type Component,
 	Ellipsis,
@@ -409,7 +410,7 @@ export class HistorySearchComponent extends OverlayPanel {
 			columns: [{ id: "when", format: "time" }],
 			items: rows.rows,
 			selected: selected ? nativeEntryKey(selected) : null,
-			empty: "No history yet",
+			empty: uiText("No history yet"),
 			actions: [
 				pickerAction("insert", "Insert", "enter", { primary: true }),
 				pickerAction("close", "Close", boundKeys("app.interrupt", ["escape"])[0] ?? "escape", { end: true }),

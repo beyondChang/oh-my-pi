@@ -10,6 +10,7 @@
  * }
  */
 import type { TspKind, TspPropNode, TspProps, TspSpan, TspText } from "@oh-my-pi/pi-wire";
+import { uiText } from "../i18n";
 import type { NativeChild, NativeNode } from "./node";
 
 /** A node of any kind. */
@@ -110,7 +111,7 @@ export function kv(pairs: readonly (readonly [string, TspText | undefined])[]): 
 	const items: { k: TspText; v: TspText }[] = [];
 	for (const [label, value] of pairs) {
 		if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) continue;
-		items.push({ k: [span(label, "muted")], v: value });
+		items.push({ k: [span(uiText(label), "muted")], v: value });
 	}
 	return items.length > 0 ? node("kv", { items }) : undefined;
 }

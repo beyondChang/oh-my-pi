@@ -31,6 +31,7 @@ import { declareWorkerHostEntry, installWorkerInbox, isWorkerHostSelector } from
 import { installSqliteLockShim } from "@oh-my-pi/pi-natives/sqlite-locks";
 import { isNativeShell, runNativeShell } from "./cli/native-shell";
 import { extractProfileFlags } from "./cli/profile-bootstrap";
+import { installCliTranslator } from "./cli/help-language";
 import {
 	AUTO_UPDATE_WORKER_ARG,
 	BLOB_BROKER_WORKER_ARG,
@@ -598,6 +599,11 @@ export async function runCli(argv: string[]): Promise<void> {
 			process.stderr.write(`error: ${resolved.error}\n`);
 			process.exitCode = 1;
 			return;
+		}
+		// Root help routes through `metadataHelp`, per-command help (`omp <cmd> --help`)
+		// straight to `renderCommandHelp`; register the translator before either renders.
+		if (helpOrVersion || resolvedArgv.includes("--help") || resolvedArgv.includes("-h")) {
+			await installCliTranslator();
 		}
 		runningCommand = resolved.argv[0];
 		await run({ bin: APP_NAME, version: VERSION, argv: resolved.argv, commands, metadataHelp: showHelp });

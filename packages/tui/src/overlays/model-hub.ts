@@ -31,10 +31,11 @@ import { FuzzyCorpus } from "../fuzzy";
 import { formatKeyHint, formatKeyHints } from "../app-keybindings";
 import { boundKeys, editorKey, editorKeys } from "../chrome/keybinding-hints";
 import type { KeyName } from "../key-hint-format";
+import { uiText } from "../i18n";
 import { col, compact, kbd, md, node, span, text } from "../native/describe";
 import { CLOSE_ACTION, type PickerEvent, picker, pickerAction, pickerEvent } from "../native/picker";
 import type { DescribeContext, NativeChild, NativeNode, NativeUiEvent } from "../native/node";
-import { actionHint, hintsRow, type NativeHint } from "../native/overlay";
+import { actionHint, hintsRow, type NativeHint, sectionHead } from "../native/overlay";
 import { plainText } from "../native/spans";
 import { isNativeRendering } from "../native/state";
 import { Input } from "../components/input";
@@ -1182,10 +1183,10 @@ export class ModelHubComponent implements Component {
 	#emptyStateMessage(): string | undefined {
 		if (this.#configError) return `  ${this.#configError}`;
 		const entry = this.#activeEntry();
-		if (entry.kind === "recent") return "  No recently used models yet";
+		if (entry.kind === "recent") return uiText("  No recently used models yet");
 		if (entry.kind !== "provider" || entry.locked) return undefined;
 		if (this.#browser.query.trim()) {
-			return `  No matching models in ${entry.label}. Switch to All models to search every provider.`;
+			return uiText(`  No matching models in ${entry.label}. Switch to All models to search every provider.`);
 		}
 		const providerId = entry.providerId ?? "";
 		const state = this.#registry.getProviderDiscoveryState(providerId);
@@ -1194,22 +1195,28 @@ export class ModelHubComponent implements Component {
 		switch (state.status) {
 			case "cached":
 				return age
-					? `  Using cached model list from ${age}. Live refresh is still pending.`
-					: "  Using cached model list. Live refresh is still pending.";
+					? uiText(`  Using cached model list from ${age}. Live refresh is still pending.`)
+					: uiText("  Using cached model list. Live refresh is still pending.");
 			case "unavailable": {
 				const httpMatch = state.error?.match(/^HTTP (\d+) from (.+)$/);
 				if (httpMatch?.[1] === "404") {
-					return `  Discovery endpoint ${httpMatch[2]} returned 404. Point baseUrl at the host that serves /models (usually .../v1).`;
+					return uiText(
+						`  Discovery endpoint ${httpMatch[2]} returned 404. Point baseUrl at the host that serves /models (usually .../v1).`,
+					);
 				}
-				if (state.error) return `  Discovery failed: ${state.error}`;
-				return age ? `  Provider unavailable. Using cached model list from ${age}.` : "  Provider unavailable.";
+				if (state.error) return uiText(`  Discovery failed: ${state.error}`);
+				return age
+					? uiText(`  Provider unavailable. Using cached model list from ${age}.`)
+					: uiText("  Provider unavailable.");
 			}
 			case "unauthenticated":
-				return "  Provider requires authentication before models can be discovered.";
+				return uiText("  Provider requires authentication before models can be discovered.");
 			case "idle":
-				return "  Provider has not been refreshed yet.";
+				return uiText("  Provider has not been refreshed yet.");
 			case "empty":
-				return "  Discovery succeeded but returned 0 models. Check that /models returns { data: [{ id }] }.";
+				return uiText(
+					"  Discovery succeeded but returned 0 models. Check that /models returns { data: [{ id }] }.",
+				);
 			case "ok":
 				return undefined;
 		}
@@ -3809,7 +3816,7 @@ export class ModelHubComponent implements Component {
 		const chainList = (key: string): NativeChild | undefined => {
 			const chain = this.#fallbackChains()[key] ?? [];
 			if (chain.length === 0) return undefined;
-			return node("section", { head: "Fallback chain" }, [
+			return node("section", { head: sectionHead("Fallback chain") }, [
 				md(chain.map((selector, index) => `${index + 1}. \`${selector}\``).join("\n")),
 			]);
 		};

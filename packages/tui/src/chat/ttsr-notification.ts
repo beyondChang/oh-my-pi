@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import { Text } from "../components/text";
 import { type Component, Container } from "../tui";
 import {
@@ -77,7 +78,7 @@ export class TtsrNotificationComponent extends Container {
 	#nativePresentation(): MessageNoticeNativePresentation {
 		const single = this.#rules.length === 1 ? this.#rules[0] : undefined;
 		const head = single
-			? [span("Rule applied: ", "warning"), span(single.name, "mono strong")]
+			? [span(uiText("Rule applied: "), "warning"), span(single.name, "mono strong")]
 			: [
 					span(`${this.#rules.length} rules applied: `, "warning"),
 					span(this.#rules.map(rule => rule.name).join(", "), "mono strong"),

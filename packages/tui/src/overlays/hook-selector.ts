@@ -39,6 +39,7 @@ import { actionHint, hintsRow, overlayCard } from "../native/overlay";
 import { plainText } from "../native/spans";
 import { CLOSE_ACTION, dockedPicker, PICKER_KEY, pickerAction, pickerEvent, pickerQuery } from "../native/picker";
 import type { TspPickerItem } from "@oh-my-pi/pi-wire";
+import { uiText, uiTextVersion } from "../i18n";
 
 /** One segment of a {@link HookSelectorSlider} — a label and an optional
  *  detail line (e.g. the resolved model name) shown beneath the track while
@@ -232,6 +233,8 @@ export class HookSelectorComponent extends OverlayPanel {
 				node: NativeNode;
 		  }
 		| undefined;
+	/** Translator generation the caches above were built with; a language switch drops them all. */
+	#textVersion = uiTextVersion();
 	constructor(
 		title: string,
 		options: HookSelectorOptionInput[],
@@ -239,7 +242,7 @@ export class HookSelectorComponent extends OverlayPanel {
 		onCancel: () => void,
 		opts?: HookSelectorOptions,
 	) {
-		super(title.split(/\r?\n/, 1)[0] ?? "", "omp.overlay.hook-select");
+		super(uiText(title.split(/\r?\n/, 1)[0] ?? ""), "omp.overlay.hook-select");
 
 		this.#options = options.map(normalizeHookSelectorOption);
 		this.#disabledIndices = new Set(
@@ -251,7 +254,7 @@ export class HookSelectorComponent extends OverlayPanel {
 			this.#options.map((option, index) => ({ option, index })),
 			{
 				getKey: filtered => String(filtered.index),
-				getSearchText: filtered => `${filtered.option.label} ${filtered.option.description ?? ""}`,
+				getSearchText: filtered => `${uiText(filtered.option.label)} ${uiText(filtered.option.description ?? "")}`,
 				isDisabled: filtered => this.#disabledIndices.has(filtered.index),
 			},
 		);
@@ -267,7 +270,7 @@ export class HookSelectorComponent extends OverlayPanel {
 		this.#onSelectCallback = onSelect;
 		this.#onCancelCallback = onCancel;
 		this.#baseTitle = this.title;
-		this.#detailLines = title.split(/\r?\n/).slice(1);
+		this.#detailLines = title.split(/\r?\n/).slice(1).map(uiText);
 		this.#helpText = opts?.helpText;
 		this.#inline = opts?.inline ?? false;
 		this.#onLeftCallback = opts?.onLeft;
@@ -280,7 +283,7 @@ export class HookSelectorComponent extends OverlayPanel {
 		}
 
 		this.addChild(new Spacer(1));
-		for (const line of title.split(/\r?\n/).slice(1)) {
+		for (const line of this.#detailLines) {
 			this.addChild(new Text(theme.fg("accent", line), 0, 0));
 		}
 		this.addChild(new Spacer(1));
@@ -320,11 +323,26 @@ export class HookSelectorComponent extends OverlayPanel {
 		this.addChild(new Spacer(1));
 		const controlsHint =
 			opts?.helpText ??
-			`${editorKeys("tui.select.up", "tui.select.down")} navigate  ${formatKeyHint("enter")} select  ${editorKey("tui.select.cancel")} cancel`;
+			`${editorKeys("tui.select.up", "tui.select.down")} ${uiText("navigate")}  ${formatKeyHint("enter")} ${uiText("select")}  ${editorKey("tui.select.cancel")} ${uiText("cancel")}`;
 		this.addChild(new Text(theme.fg("dim", controlsHint), 0, 0));
 		this.addChild(new Spacer(1));
 
 		this.#updateList();
+	}
+
+	/**
+	 * Drop every render cache when the host switched languages: the described
+	 * nodes and picker rows have the previous language baked into their spans.
+	 */
+	#syncTextVersion(): void {
+		const version = uiTextVersion();
+		if (version === this.#textVersion) return;
+		this.#textVersion = version;
+		this.#nativeItems.clear();
+		this.#nativeStatic = undefined;
+		this.#nativeMemo = undefined;
+		this.#pickerItems = undefined;
+		this.#pickerMemo = undefined;
 	}
 
 	#isDisabled(index: number): boolean {
@@ -350,18 +368,26 @@ export class HookSelectorComponent extends OverlayPanel {
 	): string[] {
 		const textColor = isDisabled ? "dim" : isSelected ? "accent" : "text";
 		const prefixColor = isDisabled ? "dim" : "accent";
-		const label = renderInlineMarkdown(option.label, mdTheme, t => theme.fg(textColor, t));
+		const label = renderInlineMarkdown(uiText(option.label), mdTheme, t => theme.fg(textColor, t));
 		const marker = index !== undefined ? this.#renderMarkerPrefix(index, isSelected, isDisabled) : undefined;
 		const prefix = marker ?? (isSelected ? theme.fg(prefixColor, `${theme.nav.cursor} `) : "  ");
 		const lines = [prefix + label];
 		if (option.description && descRows !== 0) {
 			const descriptionColor: ThemeColor = isDisabled ? "dim" : "muted";
 			if (descRows === "full") {
-				const description = renderInlineMarkdown(option.description, mdTheme, t => theme.fg(descriptionColor, t));
+				const description = renderInlineMarkdown(uiText(option.description), mdTheme, t =>
+					theme.fg(descriptionColor, t),
+				);
 				lines.push(`    ${description}`);
 			} else {
 				lines.push(
-					...this.#wrapDescriptionRows(option.description, descRows, descriptionColor, mdTheme, renderWidth),
+					...this.#wrapDescriptionRows(
+						uiText(option.description),
+						descRows,
+						descriptionColor,
+						mdTheme,
+						renderWidth,
+					),
 				);
 			}
 		}
@@ -522,7 +548,7 @@ export class HookSelectorComponent extends OverlayPanel {
 		}
 
 		if (total === 0) {
-			rows.push({ text: theme.fg("dim", "  No matching options"), highlight: false });
+			rows.push({ text: theme.fg("dim", `  ${uiText("No matching options")}`), highlight: false });
 		}
 
 		if (startIndex > 0 || endIndex < total || this.#shouldRenderSearchStatus(renderWidth, mdTheme)) {
@@ -586,11 +612,11 @@ export class HookSelectorComponent extends OverlayPanel {
 		const selectedCount = total === 0 ? 0 : this.#menu.selectedIndex + 1;
 		const count =
 			this.#menu.query.trim() && total !== this.#options.length
-				? `${selectedCount}/${total} of ${this.#options.length}`
+				? `${selectedCount}/${total} ${uiText("of")} ${this.#options.length}`
 				: `${selectedCount}/${total}`;
-		if (!this.#menu.query.trim()) return theme.fg("dim", `  (${count})  Type to search`);
+		if (!this.#menu.query.trim()) return theme.fg("dim", `  (${count})  ${uiText("Type to search")}`);
 		const field = this.#search.render(visibleWidth(this.#search.getValue()) + 1)[0] ?? "";
-		return `${theme.fg("dim", `  (${count})  Search: `)}${field}`;
+		return `${theme.fg("dim", `  (${count})  ${uiText("Search: ")}`)}${field}`;
 	}
 
 	/** Applies the search field's value to the filter. */
@@ -674,6 +700,7 @@ export class HookSelectorComponent extends OverlayPanel {
 	}
 
 	override render(width: number): readonly string[] {
+		this.#syncTextVersion();
 		const renderWidth = Math.max(1, width - 4);
 		if (this.#lastRenderWidth !== renderWidth) {
 			this.#lastRenderWidth = renderWidth;
@@ -706,8 +733,8 @@ export class HookSelectorComponent extends OverlayPanel {
 		const fixed = this.#describeStatic(mdTheme);
 		this.#pickerItems ??= this.#options.map((option, index) => ({
 			id: String(index),
-			label: plainInline(option.label, mdTheme),
-			...(option.description ? { detail: plainInline(option.description, mdTheme) } : {}),
+			label: plainInline(uiText(option.label), mdTheme),
+			...(option.description ? { detail: plainInline(uiText(option.description), mdTheme) } : {}),
 			...(this.#isDisabled(index) ? { disabled: true as const } : {}),
 		}));
 		const checkbox = this.#selectionMarker === "checkbox";
@@ -724,8 +751,8 @@ export class HookSelectorComponent extends OverlayPanel {
 			selected: selected ?? null,
 			...(checkbox ? { current: [...this.#checkedIndices].map(String) } : {}),
 			total: this.#options.length,
-			empty: "No matching options",
-			actions: [pickerAction("confirm", "Select", "enter", { primary: true }), CLOSE_ACTION],
+			empty: uiText("No matching options"),
+			actions: [pickerAction("confirm", uiText("Select"), "enter", { primary: true }), CLOSE_ACTION],
 		});
 		this.#pickerMemo = { items, selected, query, cursor, node: result };
 		return result;
@@ -739,6 +766,7 @@ export class HookSelectorComponent extends OverlayPanel {
 	 * and the key hints.
 	 */
 	override describe(cx: DescribeContext): NativeNode {
+		this.#syncTextVersion();
 		if (cx.supports("picker") && !this.#inline && !this.#slider && !this.#countdown) return this.#describePicker();
 		const items = this.#menu.visibleItems;
 		const selected = this.#menu.selectedKey;
@@ -778,7 +806,7 @@ export class HookSelectorComponent extends OverlayPanel {
 				{
 					selected: selectedItem && !this.#menu.isDisabled(selectedItem) ? (selected ?? null) : null,
 					filter: query.trim() || undefined,
-					empty: "No matching options",
+					empty: uiText("No matching options"),
 					max: { lines: this.#maxVisible },
 				},
 				rows,
@@ -787,7 +815,7 @@ export class HookSelectorComponent extends OverlayPanel {
 		);
 		if (query) {
 			children.push(
-				node("text", { spans: [span("Search: ", "dim"), span(query)], wrap: "none" }, undefined, "search"),
+				node("text", { spans: [span(uiText("Search: "), "dim"), span(query)], wrap: "none" }, undefined, "search"),
 			);
 		}
 		children.push(fixed.hints);
@@ -860,9 +888,9 @@ export class HookSelectorComponent extends OverlayPanel {
 			this.#helpText !== undefined
 				? node("text", { spans: [span(plainText(this.#helpText), "dim")], wrap: "word" }, undefined, "hints")
 				: hintsRow([
-						actionHint(["tui.select.up", "tui.select.down"], "navigate"),
-						{ keys: ENTER_KEYS, label: "select" },
-						actionHint("tui.select.cancel", "cancel"),
+						actionHint(["tui.select.up", "tui.select.down"], uiText("navigate")),
+						{ keys: ENTER_KEYS, label: uiText("select") },
+						actionHint("tui.select.cancel", uiText("cancel")),
 					]);
 		this.#nativeStatic = { title: plainInline(this.#baseTitle, mdTheme), detail, hints };
 		return this.#nativeStatic;
@@ -908,7 +936,7 @@ export class HookSelectorComponent extends OverlayPanel {
 		if (cached && cached.marker === marker) return cached.node;
 
 		const disabled = this.#isDisabled(index);
-		const label = plainInline(option.label, mdTheme);
+		const label = plainInline(uiText(option.label), mdTheme);
 		let glyph: string | undefined;
 		let glyphColor = "dim";
 		if (radio) {
@@ -923,7 +951,7 @@ export class HookSelectorComponent extends OverlayPanel {
 			"item",
 			{
 				label: glyph ? [span(`${glyph} `, glyphColor), span(label)] : [span(label)],
-				detail: option.description ? [span(plainInline(option.description, mdTheme), "muted")] : undefined,
+				detail: option.description ? [span(plainInline(uiText(option.description), mdTheme), "muted")] : undefined,
 				disabled: disabled || undefined,
 			},
 			undefined,

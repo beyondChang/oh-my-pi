@@ -24,6 +24,7 @@ import { type DescribeContext, leafKey, type NativeChild, type NativeNode, type 
 import { actionBar, actionButton } from "../native/overlay";
 import { plainText } from "../native/spans";
 import { isNativeRendering } from "../native/state";
+import { uiText } from "../i18n";
 
 type TransportType = "stdio" | "http" | "sse";
 type AuthMethod = "none" | "oauth" | "manual";
@@ -181,12 +182,12 @@ function nativeErrorText(error: unknown): string {
 
 /** Footer for text steps; the field submits on `tui.input.submit` and cancels on `tui.select.cancel`. */
 function inputHint(escapeAction: string): string {
-	return `[${editorKey("tui.input.submit")} to continue, ${editorKey("tui.select.cancel")} to ${escapeAction}]`;
+	return `[${editorKey("tui.input.submit")} ${uiText("to continue")}, ${editorKey("tui.select.cancel")} ${uiText(escapeAction)}]`;
 }
 
 /** Footer for choice steps; the wizard routes navigation, Enter, and Escape itself. */
 function choiceHint(escapeAction: string): string {
-	return `[${editorKeys("tui.select.up", "tui.select.down")} to navigate, ${formatKeyHint("enter")} to select, ${interruptKey()} to ${escapeAction}]`;
+	return `[${editorKeys("tui.select.up", "tui.select.down")} ${uiText("to navigate")}, ${formatKeyHint("enter")} ${uiText("to select")}, ${interruptKey()} ${uiText(escapeAction)}]`;
 }
 
 /** The wizard's phases, the native progress strip's segments in order. */
@@ -234,7 +235,7 @@ const SCOPE_LABELS: Readonly<Record<Scope, string>> = { user: "Every project", p
 
 /** The ANSI heading: the step's title and where it sits among the phases. */
 function ansiHeading(title: string, tone: "accent" | "success" | "warning" | "error" | "muted", phase: number): Text {
-	return new Text(`${theme.fg(tone, title)}${theme.fg("dim", `  ${phase + 1}/${PHASES.length}`)}`, 0, 0);
+	return new Text(`${theme.fg(tone, uiText(title))}${theme.fg("dim", `  ${phase + 1}/${PHASES.length}`)}`, 0, 0);
 }
 
 /** A status line of a native async step: a spinner while busy, else a toned icon. */
@@ -459,12 +460,12 @@ export class MCPAddWizard extends OverlayPanel {
 				: inputHint(options.escape);
 		const field = new TextFormField({
 			theme: mcpFormTheme,
-			label: options.lead,
+			label: uiText(options.lead),
 			details: options.placeholder ? [new Text(theme.fg("muted", `e.g. ${options.placeholder}`), 0, 0)] : undefined,
 			summary: options.error
 				? [new Text(theme.fg("error", `✗ ${sanitize(options.error)}`), 0, 0), new Spacer(1)]
 				: undefined,
-			hint: options.note ? `[${options.note}]\n${keyHint}` : keyHint,
+			hint: options.note ? `[${uiText(options.note)}]\n${keyHint}` : keyHint,
 			initialValue: options.initial,
 			secret: options.secret,
 			empty: options.optional ? "submit" : "reject",
@@ -477,15 +478,15 @@ export class MCPAddWizard extends OverlayPanel {
 		const caption = options.error
 			? text([span(plainText(options.error), "error")], { role: "omp.mcpAdd.note", wrap: "word" })
 			: options.note
-				? text(options.note, { role: "omp.mcpAdd.note", wrap: "word" })
+				? text(uiText(options.note), { role: "omp.mcpAdd.note", wrap: "word" })
 				: undefined;
 		const cancelKey = getKeybindings().getKeys("tui.select.cancel")[0] ?? "escape";
 		this.#show(
 			new WizardStep({ kind: "input", heading: ansiHeading(options.title, "accent", phase), content: field }),
 			{
 				phase,
-				title: options.title,
-				lead: options.lead,
+				title: uiText(options.title),
+				lead: uiText(options.lead),
 				optional: options.optional,
 				body: [
 					node(
@@ -496,9 +497,9 @@ export class MCPAddWizard extends OverlayPanel {
 					),
 				],
 				actions: {
-					back: this.#currentStep === "name" ? undefined : "Back",
+					back: this.#currentStep === "name" ? undefined : uiText("Back"),
 					backKey: cancelKey,
-					next: "Continue",
+					next: uiText("Continue"),
 					nextKey: getKeybindings().getKeys("tui.input.submit")[0] ?? "enter",
 				},
 			},
@@ -517,11 +518,16 @@ export class MCPAddWizard extends OverlayPanel {
 	}): void {
 		const tone = options.headingTone ?? "accent";
 		const phase = STEP_PHASE[this.#currentStep];
-		const items = options.choices.map((choice, index) => ({
-			value: String(index),
-			label: choice.tag ? `${choice.label} (${choice.tag})` : choice.label,
-			description: choice.description,
-		}));
+		// The list reports the chosen index, never its label, so a translated
+		// label cannot break the step's own dispatch.
+		const items = options.choices.map((choice, index) => {
+			const label = uiText(choice.label);
+			return {
+				value: String(index),
+				label: choice.tag ? `${label} (${choice.tag})` : label,
+				description: choice.description === undefined ? undefined : uiText(choice.description),
+			};
+		});
 		const list = new SelectList(items, MAX_DISPLAY_WIDTH * Math.max(1, items.length), getSelectListTheme(), {
 			search: "never",
 			renderItem: ({ item, selected, width }) => {
@@ -540,20 +546,24 @@ export class MCPAddWizard extends OverlayPanel {
 			new WizardStep({
 				kind: "choice",
 				heading: ansiHeading(options.title, tone, phase),
-				intro: options.intro ?? (options.lead ? new Text(options.lead, 0, 0) : undefined),
+				intro: options.intro ?? (options.lead ? new Text(uiText(options.lead), 0, 0) : undefined),
 				content: list,
-				footer: new Text(theme.fg("muted", choiceHint(options.escape)), 0, 0),
+				footer: new Text(theme.fg("muted", choiceHint(uiText(options.escape))), 0, 0),
 			}),
 			{
 				phase,
-				title: options.title,
-				lead: options.lead,
+				title: uiText(options.title),
+				lead: options.lead === undefined ? undefined : uiText(options.lead),
 				body: options.body ?? [],
-				choices: options.choices,
+				choices: options.choices.map(choice => ({
+					...choice,
+					label: uiText(choice.label),
+					...(choice.description === undefined ? {} : { description: uiText(choice.description) }),
+				})),
 				actions: {
-					back: this.#currentStep === "name" ? undefined : "Back",
+					back: this.#currentStep === "name" ? undefined : uiText("Back"),
 					backKey: boundKeys("app.interrupt", ["escape"])[0] ?? "escape",
-					next: "Continue",
+					next: uiText("Continue"),
 					nextKey: "enter",
 				},
 			},
@@ -585,10 +595,13 @@ export class MCPAddWizard extends OverlayPanel {
 			}),
 			{
 				phase: options.phase,
-				title: options.title,
-				lead: options.lead,
+				title: uiText(options.title),
+				lead: options.lead === undefined ? undefined : uiText(options.lead),
 				body: options.native,
-				actions: { back: options.back ?? "Back", backKey: boundKeys("app.interrupt", ["escape"])[0] ?? "escape" },
+				actions: {
+					back: uiText(options.back ?? "Back"),
+					backKey: boundKeys("app.interrupt", ["escape"])[0] ?? "escape",
+				},
 			},
 		);
 	}
@@ -642,7 +655,7 @@ export class MCPAddWizard extends OverlayPanel {
 		// The wizard replaces the editor in the dock; its sheet hoists into the terminal's layer.
 		const sheet = node(
 			"overlay",
-			{ role: this.nativeRole, head: "Add MCP server", anchor: "center", size: "md", modal: true },
+			{ role: this.nativeRole, head: uiText("Add MCP server"), anchor: "center", size: "md", modal: true },
 			[col(children, { gap: "lg" })],
 			"sheet",
 		);
@@ -658,8 +671,8 @@ export class MCPAddWizard extends OverlayPanel {
 			const tone = index === phase ? "accent" : index > phase ? "muted" : skipped ? "neutral" : "success";
 			return node(
 				"col",
-				{ role: "omp.mcpAdd.phase", tone, ...(skipped ? { title: "Auth · not needed" } : {}) },
-				[text(label)],
+				{ role: "omp.mcpAdd.phase", tone, ...(skipped ? { title: uiText("Auth · not needed") } : {}) },
+				[text(uiText(label))],
 				label,
 			);
 		});
@@ -946,9 +959,9 @@ export class MCPAddWizard extends OverlayPanel {
 		});
 
 		const summary = new Container();
-		for (const entry of entries) summary.addChild(new Text(`${entry.k}: ${entry.ansi}`, 0, 0));
+		for (const entry of entries) summary.addChild(new Text(`${uiText(entry.k)}: ${entry.ansi}`, 0, 0));
 		summary.addChild(new Spacer(1));
-		summary.addChild(new Text("Save this configuration?", 0, 0));
+		summary.addChild(new Text(uiText("Save this configuration?"), 0, 0));
 		this.#stepKind = "confirm";
 		this.#show(
 			new WizardStep({
@@ -956,15 +969,18 @@ export class MCPAddWizard extends OverlayPanel {
 				heading: ansiHeading("Review", "accent", PHASE_REVIEW),
 				content: summary,
 				footer: new Text(
-					theme.fg("muted", `[${formatKeyHint("enter")} to save, ${interruptKey()} to go back]`),
+					theme.fg(
+						"muted",
+						`[${formatKeyHint("enter")} ${uiText("to save")}, ${interruptKey()} ${uiText("go back")}]`,
+					),
 					0,
 					0,
 				),
 			}),
 			{
 				phase: PHASE_REVIEW,
-				title: "Review and save",
-				lead: "omp connects to the server as soon as it is saved.",
+				title: uiText("Review and save"),
+				lead: uiText("omp connects to the server as soon as it is saved."),
 				body: [
 					node(
 						"kv",
@@ -974,9 +990,9 @@ export class MCPAddWizard extends OverlayPanel {
 					),
 				],
 				actions: {
-					back: "Back",
+					back: uiText("Back"),
 					backKey: boundKeys("app.interrupt", ["escape"])[0] ?? "escape",
-					next: "Save server",
+					next: uiText("Save server"),
 					nextKey: "enter",
 				},
 			},

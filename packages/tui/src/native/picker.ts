@@ -16,17 +16,63 @@
  * the item id and `action` with an action id (plus `value` for
  * `scope`/`tab`/`strip`). {@link pickerEvent} folds them into one shape.
  */
-import type { TspPickerAction, TspPickerItem, TspPickerProps, TspProps } from "@oh-my-pi/pi-wire";
+import type { TspPickerAction, TspPickerItem, TspPickerProps, TspProps, TspText } from "@oh-my-pi/pi-wire";
 import type { KeyName } from "../key-hint-format";
 import { getKeybindings, type Keybinding } from "../keybindings";
 import type { Input } from "../components/input";
 import type { SelectItem, SelectList } from "../components/select-list";
+import { uiText } from "../i18n";
 import { col, node } from "./describe";
 import type { NativeChild, NativeNode, NativeUiEvent } from "./node";
 
+/** Localize one text or span array, leaving non-chrome values (ids, paths) untouched. */
+function localized<T extends TspText | undefined>(value: T): T {
+	return (typeof value === "string" ? uiText(value) : value) as T;
+}
+
+/**
+ * Translate a picker's chrome — head, noun, placeholder, scope/tab/group/column
+ * heads, action labels — and leave its rows alone: item labels are content
+ * (model ids, session titles, paths), so they render verbatim.
+ *
+ * Applied when the node is built, not on every render: a picker is a modal with
+ * a lifetime measured in seconds, so a language switch while one is open leaves
+ * that sheet in the previous language, and the next one opens translated.
+ */
+function localizePickerProps(p: TspProps<"picker">): TspProps<"picker"> {
+	return {
+		...p,
+		title: localized(p.title),
+		subtitle: localized(p.subtitle),
+		noun: localized(p.noun),
+		placeholder: localized(p.placeholder),
+		empty: localized(p.empty),
+		message: localized(p.message),
+		scopes: p.scopes?.map(scope => ({ ...scope, label: localized(scope.label) })),
+		tabs: p.tabs?.map(tab => ({ ...tab, label: localized(tab.label) })),
+		columns: p.columns?.map(column => ({ ...column, head: localized(column.head) })),
+		actions: p.actions?.map(action => ({ ...action, label: localized(action.label) })),
+		strip: p.strip
+			? {
+					...p.strip,
+					label: localized(p.strip.label),
+					items: p.strip.items.map(item => ({ ...item, label: localized(item.label) })),
+				}
+			: p.strip,
+		confirm: p.confirm
+			? {
+					...p.confirm,
+					text: localized(p.confirm.text),
+					label: localized(p.confirm.label),
+				}
+			: p.confirm,
+		order: p.order?.map(entry => (typeof entry === "string" ? entry : { ...entry, label: localized(entry.label) })),
+	};
+}
+
 /** The picker sheet; `preview` children fill its preview pane. */
 export function picker(p: TspProps<"picker">, preview?: readonly NativeChild[]): NativeNode {
-	return node("picker", p, preview);
+	return node("picker", localizePickerProps(p), preview);
 }
 
 /**
@@ -47,7 +93,7 @@ export const PICKER_KEY = "picker";
  * `layer`. Route its events with `pickerEvent(event, PICKER_KEY)`.
  */
 export function dockedPicker(p: TspProps<"picker">, preview?: readonly NativeChild[]): NativeNode {
-	return col([node("picker", p, preview, PICKER_KEY)]);
+	return col([node("picker", localizePickerProps(p), preview, PICKER_KEY)]);
 }
 
 /** Keycap names for one key id (`"alt+enter"` → `["alt", "enter"]`, `"escape"` → `["esc"]`). */

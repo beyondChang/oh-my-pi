@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import type { NativeToolHead, NativeToolView, ToolRenderer, ToolRenderResult } from "./renderer";
 import { formatCount, isRecord, sanitizeText } from "@oh-my-pi/pi-utils";
 import { compact, node, row, span, text } from "../native/describe";
@@ -232,7 +233,7 @@ function describeAskCall(args: AskRenderArgs): NativeToolView {
 	return {
 		tool: askHead(questions[0], questions.length > 1 ? formatCount("field", questions.length) : undefined),
 		inline: true,
-		body: [text([span("Waiting for your answer…", "muted")])],
+		body: [text([span(uiText("Waiting for your answer…"), "muted")])],
 	};
 }
 

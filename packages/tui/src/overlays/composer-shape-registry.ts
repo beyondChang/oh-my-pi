@@ -1,4 +1,5 @@
 import { type ComposerStyle, registerComposerStyle } from "../index";
+import { uiText } from "../i18n";
 import type { SubmenuOption } from "./settings-defs";
 
 /** Composer shape id; extensions may register additional values at runtime. */
@@ -78,5 +79,9 @@ export function installExtensionComposerShape(definition: ComposerShapeDefinitio
 
 /** Available built-in and extension composer choices in selector order. */
 export function getComposerShapeOptions(): readonly SubmenuOption[] {
-	return [...BUILTIN_COMPOSER_SHAPES, ...extensionComposerShapes.values()];
+	return [...BUILTIN_COMPOSER_SHAPES, ...extensionComposerShapes.values()].map(option => ({
+		...option,
+		label: uiText(option.label),
+		...(option.description === undefined ? {} : { description: uiText(option.description) }),
+	}));
 }

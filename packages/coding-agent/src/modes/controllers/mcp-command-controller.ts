@@ -57,6 +57,7 @@ import { TranscriptBlock } from "@oh-my-pi/pi-tui/chrome/transcript-container";
 import { parseCommandArgs } from "../../utils/command-args";
 import { theme } from "@oh-my-pi/pi-tui/theme";
 import { col, span, text } from "@oh-my-pi/pi-tui/native/describe";
+import { localizeUiText } from "../../i18n";
 import type { NativeNode } from "@oh-my-pi/pi-tui/native/node";
 import type { InteractiveModeContext } from "../types";
 import { groupBySource, parseRemoveArgs, readScopeFlag, showCommandMessage } from "./command-controller-shared";
@@ -356,7 +357,9 @@ export class MCPCommandController {
 				await this.#handleReload();
 				break;
 			default:
-				this.ctx.showError(`Unknown subcommand: ${subcommand}. Type /mcp help for usage.`);
+				this.ctx.showError(
+					`${localizeUiText("Unknown subcommand:")} ${subcommand}${localizeUiText(". Type /mcp help for usage.")}`,
+				);
 		}
 	}
 
@@ -365,28 +368,30 @@ export class MCPCommandController {
 	 */
 	#showHelp(): void {
 		const helpText = [
-			"Manage Model Context Protocol (MCP) servers for external tool integrations.",
+			localizeUiText("Manage Model Context Protocol (MCP) servers for external tool integrations."),
 			"",
-			theme.fg("accent", "Commands:"),
-			"  /mcp add              Add a new MCP server (interactive wizard)",
-			"  /mcp add <name> [--scope project|user] [--url <url> --transport http|sse] [--token <token>] [-- <command...>]",
-			"  /mcp list             List all configured MCP servers",
-			"  /mcp remove <name> [--scope project|user]    Remove an MCP server (default: project)",
-			"  /mcp test <name>      Test connection to an MCP server",
-			"  /mcp reauth <name>    Reauthorize OAuth for an MCP server",
-			"  /mcp unauth <name>    Remove OAuth auth from an MCP server",
-			"  /mcp enable <name>    Enable an MCP server",
-			"  /mcp disable <name>   Disable an MCP server",
-			"  /mcp reconnect <name> Reconnect to a specific MCP server",
-			"  /mcp reload           Force reload and rediscover MCP runtime tools",
-			"  /mcp resources        List available resources from connected servers",
-			"  /mcp prompts          List available prompts from connected servers",
-			"  /mcp notifications    Show notification capabilities and subscription state",
-			"  /mcp help             Show this help message",
+			theme.fg("accent", localizeUiText("Commands:")),
+			localizeUiText("  /mcp add              Add a new MCP server (interactive wizard)"),
+			localizeUiText(
+				"  /mcp add <name> [--scope project|user] [--url <url> --transport http|sse] [--token <token>] [-- <command...>]",
+			),
+			localizeUiText("  /mcp list             List all configured MCP servers"),
+			localizeUiText("  /mcp remove <name> [--scope project|user]    Remove an MCP server (default: project)"),
+			localizeUiText("  /mcp test <name>      Test connection to an MCP server"),
+			localizeUiText("  /mcp reauth <name>    Reauthorize OAuth for an MCP server"),
+			localizeUiText("  /mcp unauth <name>    Remove OAuth auth from an MCP server"),
+			localizeUiText("  /mcp enable <name>    Enable an MCP server"),
+			localizeUiText("  /mcp disable <name>   Disable an MCP server"),
+			localizeUiText("  /mcp reconnect <name> Reconnect to a specific MCP server"),
+			localizeUiText("  /mcp reload           Force reload and rediscover MCP runtime tools"),
+			localizeUiText("  /mcp resources        List available resources from connected servers"),
+			localizeUiText("  /mcp prompts          List available prompts from connected servers"),
+			localizeUiText("  /mcp notifications    Show notification capabilities and subscription state"),
+			localizeUiText("  /mcp help             Show this help message"),
 			"",
 		].join("\n");
 
-		this.#showReport("MCP Server Management", helpText);
+		this.#showReport(localizeUiText("MCP Server Management"), helpText);
 	}
 
 	#parseAddCommand(text: string): MCPAddParsed {

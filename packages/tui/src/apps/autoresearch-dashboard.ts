@@ -19,6 +19,7 @@ import { fmtNum, formatNum, type ExperimentResult, type ExperimentState } from "
 import type { TspScrollBy, TspSpan, TspTableColumn, TspText } from "@oh-my-pi/pi-wire";
 import { card, col, elapsed, keyed, node, row, span, text } from "../native/describe";
 import type { DescribeContext, NativeNode, NativeScroll, NativeUiEvent } from "../native/node";
+import { uiText } from "../i18n";
 import { actionBar, actionButton, hintsRow } from "../native/overlay";
 import { Memo } from "../native/memo";
 import { isNativeRendering } from "../native/state";
@@ -877,17 +878,17 @@ function describeRuns(
 	);
 	const cols: TspTableColumn[] = [
 		{ id: "run", head: "#", align: "end", priority: 3 },
-		{ id: "status", head: "Outcome", priority: 4 },
+		{ id: "status", head: uiText("Outcome"), priority: 4 },
 		{ id: "metric", head: head(state.metricName, state.metricUnit), align: "end", priority: 5 },
-		{ id: "change", head: "vs baseline", align: "end", priority: 4 },
+		{ id: "change", head: uiText("vs baseline"), align: "end", priority: 4 },
 		...state.secondaryMetrics.map((metric, index): TspTableColumn => ({
 			id: `secondary${index}`,
 			head: head(metric.name, metric.unit),
 			align: "end",
 			priority: 1,
 		})),
-		{ id: "commit", head: "Commit", priority: 2 },
-		{ id: "description", head: "Change", truncate: "end", grow: 1, priority: 3 },
+		{ id: "commit", head: uiText("Commit"), priority: 2 },
+		{ id: "description", head: uiText("Change"), truncate: "end", grow: 1, priority: 3 },
 	];
 	const rows = indexed
 		.slice()

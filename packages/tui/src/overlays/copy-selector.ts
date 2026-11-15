@@ -42,6 +42,7 @@ import {
 	type OutlineTarget,
 	outlineRows,
 } from "../chat/transcript-outline";
+import { uiText } from "../i18n";
 import { code, compact, md, node, row, span, text } from "../native/describe";
 import type { DescribeContext, NativeChild, NativeNode, NativeUiEvent } from "../native/node";
 import { actionHint, hintsRow, type NativeHint, overlayCard } from "../native/overlay";
@@ -706,10 +707,10 @@ export class CopySelectorComponent implements Component {
 		const focused = this.#blocks?.[this.#blockSelected];
 		const action = this.deps.actionLabel ?? "copy";
 		const props: TspPickerProps = {
-			title: this.deps.title ?? "Copy",
-			...(this.deps.title ? {} : { subtitle: "Pick what to put on the clipboard" }),
+			title: uiText(this.deps.title ?? "Copy"),
+			...(this.deps.title ? {} : { subtitle: uiText("Pick what to put on the clipboard") }),
 			icon: "clipboard",
-			noun: "turns",
+			noun: uiText("turns"),
 			size: "lg",
 			layout: "timeline",
 			preview: "side",
@@ -718,14 +719,14 @@ export class CopySelectorComponent implements Component {
 			items: this.#pickerItems.of(this.#targets),
 			selected: target?.turnId ?? null,
 			total: this.#targets.length,
-			empty: "Nothing to copy",
+			empty: uiText("Nothing to copy"),
 			focus: descended ? "preview" : "list",
 			actions: compact([
-				pickerAction("pick", `${action[0]!.toUpperCase()}${action.slice(1)}`, "enter", { primary: true }),
-				!descended && blocks.length > 0 ? pickerAction("blocks", "Blocks", "right") : undefined,
-				focused?.href && this.deps.onOpen ? pickerAction("open-link", "Open link", "o") : undefined,
-				!descended && this.#truncated ? pickerAction("earlier", "Earlier turns", "a") : undefined,
-				descended ? { ...CLOSE_ACTION, label: "Back" } : CLOSE_ACTION,
+				pickerAction("pick", uiText(`${action[0]!.toUpperCase()}${action.slice(1)}`), "enter", { primary: true }),
+				!descended && blocks.length > 0 ? pickerAction("blocks", uiText("Blocks"), "right") : undefined,
+				focused?.href && this.deps.onOpen ? pickerAction("open-link", uiText("Open link"), "o") : undefined,
+				!descended && this.#truncated ? pickerAction("earlier", uiText("Earlier turns"), "a") : undefined,
+				descended ? { ...CLOSE_ACTION, label: uiText("Back") } : CLOSE_ACTION,
 			]),
 		};
 		const preview: NativeNode[] = [];
@@ -772,7 +773,7 @@ export class CopySelectorComponent implements Component {
 				row([text([span("‹ back", "accent")], { actions: { click: "back" } })], { gap: "md" }),
 				node(
 					"list",
-					{ selected: String(this.#blockSelected), empty: "No blocks" },
+					{ selected: String(this.#blockSelected), empty: uiText("No blocks") },
 					this.#blocks.map((item, index) => {
 						const lines = item.content.split("\n").length;
 						return node(
@@ -797,7 +798,7 @@ export class CopySelectorComponent implements Component {
 			children.push(
 				node(
 					"list",
-					{ selected: target?.turnId ?? null, virtual: true, max: 0.5, empty: "Nothing to copy" },
+					{ selected: target?.turnId ?? null, virtual: true, max: 0.5, empty: uiText("Nothing to copy") },
 					this.#transcriptItems(),
 					"list",
 				),

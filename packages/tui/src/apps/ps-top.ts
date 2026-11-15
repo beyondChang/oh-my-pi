@@ -19,6 +19,7 @@ import { col, compact, elapsed, keyed, node, row, span, stableKey, text } from "
 import type { NativeNode, NativeUiEvent } from "../native/node";
 import { actionBar, actionButton, iconButton, segmentedTabs } from "../native/overlay";
 import { Memo } from "../native/memo";
+import { uiText } from "../i18n";
 import { truncateToWidth } from "../utils";
 import { formatDuration } from "@oh-my-pi/pi-utils";
 import chalk from "@oh-my-pi/pi-utils/chalk";
@@ -433,10 +434,10 @@ export class PsTopComponent implements Component {
 								id: "current",
 								label:
 									this.#target.dir !== undefined || this.#target.global !== undefined
-										? "Target"
-										: "This project",
+										? uiText("Target")
+										: uiText("This project"),
 							},
-							{ id: "all", label: "All scopes" },
+							{ id: "all", label: uiText("All scopes") },
 						],
 						active: this.#all ? "all" : "current",
 						role: "omp.app.seg",
@@ -508,15 +509,19 @@ export class PsTopComponent implements Component {
 				...(this.#view === "info" ? [actionButton("Logs", "logs")] : []),
 			]);
 		}
-		if (!entry) return actionBar([null, actionButton("Quit", "quit", { keys: "q" })]);
+		if (!entry) return actionBar([null, actionButton(uiText("Quit"), "quit", { keys: "q" })]);
 		return actionBar([
-			actionButton("Info", "info", { keys: "enter", tone: "accent" }),
-			actionButton("Logs", "logs", { keys: "l" }),
-			actionButton("Restart", "restart", { keys: "r" }),
-			actionButton("Stop", "stop", { keys: "s" }),
-			actionButton("Kill", "kill", { keys: "x", tone: "error", title: "Kill the process (asks first)" }),
+			actionButton(uiText("Info"), "info", { keys: "enter", tone: "accent" }),
+			actionButton(uiText("Logs"), "logs", { keys: "l" }),
+			actionButton(uiText("Restart"), "restart", { keys: "r" }),
+			actionButton(uiText("Stop"), "stop", { keys: "s" }),
+			actionButton(uiText("Kill"), "kill", {
+				keys: "x",
+				tone: "error",
+				title: uiText("Kill the process (asks first)"),
+			}),
 			null,
-			actionButton("Quit", "quit", { keys: "q" }),
+			actionButton(uiText("Quit"), "quit", { keys: "q" }),
 		]);
 	}
 
@@ -550,7 +555,7 @@ export class PsTopComponent implements Component {
 								selected && selected.scope.runtimeDir === report.scope.runtimeDir
 									? stableKey(flatKey(selected))
 									: null,
-							empty: "No processes",
+							empty: uiText("No processes"),
 							role: "omp.ps.processes",
 						},
 						report.daemons.map(daemon => describeProcess(report.scope, daemon)),

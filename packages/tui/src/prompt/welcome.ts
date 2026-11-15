@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import { APP_NAME } from "@oh-my-pi/pi-utils/dirs";
 import type { TspSpan } from "@oh-my-pi/pi-wire";
 import { formatDoubleTap, formatKeyHint, formatKeyHints, type KeyName } from "../app-keybindings";
@@ -539,9 +540,9 @@ function appendVersionUpdate(lines: string[], update: VersionUpdate, termWidth: 
 function versionUpdateSpans(update: VersionUpdate): TspSpan[] {
 	const tone = updateTone(update);
 	const head = span(` → v${update.version}`, `${tone} mono`);
-	if (update.phase === "ready") return [head, span(" next launch", tone)];
-	if (update.phase === "failed") return [head, span(" update failed", tone)];
-	if (update.fraction === undefined) return [head, span(" updating…", "muted")];
+	if (update.phase === "ready") return [head, span(uiText(" next launch"), tone)];
+	if (update.phase === "failed") return [head, span(uiText(" update failed"), tone)];
+	if (update.fraction === undefined) return [head, span(uiText(" updating…"), "muted")];
 	return [head, span(` ${updatePercent(update.fraction)}`, `${tone} mono`)];
 }
 

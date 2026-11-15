@@ -1,3 +1,4 @@
+import { uiText } from "../../i18n";
 import { centerLine } from "../../utils";
 import { padToWidth } from "../../render/utils";
 import { APP_NAME } from "@oh-my-pi/pi-utils";
@@ -24,10 +25,13 @@ export function describeSetupOutro(model: string | undefined): NativeNode {
 			compact([
 				node("spacer", { grow: 1 }, undefined, "top"),
 				node("image", { builtin: "omp", alt: APP_NAME, w: 72, role: "omp.setup.outro.mark" }, undefined, "logo"),
-				keyed(text([span("You're all set", "strong")], { wrap: "none", role: "omp.setup.outro.title" }), "title"),
+				keyed(
+					text([span(uiText("You're all set"), "strong")], { wrap: "none", role: "omp.setup.outro.title" }),
+					"title",
+				),
 				model !== undefined &&
 					keyed(
-						text([span("Default model", "muted"), span(" · ", "dim"), span(model, "muted")], {
+						text([span(uiText("Default model"), "muted"), span(" · ", "dim"), span(model, "muted")], {
 							wrap: "none",
 							truncate: "end",
 							role: "omp.setup.outro.model",

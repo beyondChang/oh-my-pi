@@ -4,6 +4,7 @@ import { getMenuWindow, MenuSelection } from "./menu-selection";
 import { getKeybindings } from "../keybindings";
 import { extractPrintableText, matchesKey } from "../keys";
 import { type MouseRoutable, routeSelectListMouse, type SgrMouseEvent } from "../mouse";
+import { uiText, uiTextVersion } from "../i18n";
 import { col, node, span } from "../native/describe";
 import { sameItems, sameProps } from "../native/memo";
 import { plainLine } from "../native/spans";
@@ -165,7 +166,13 @@ export class SelectList implements Component, MouseRoutable {
 	 */
 	#sanitized = new WeakMap<
 		SelectItem,
-		{ sourceLabel: string; sourceDescription: string | undefined; label: string; description: string | undefined }
+		{
+			sourceLabel: string;
+			sourceDescription: string | undefined;
+			textVersion: number;
+			label: string;
+			description: string | undefined;
+		}
 	>();
 	#maxVisible: number;
 	#selection: MenuSelection<SelectItem>;
@@ -305,8 +312,8 @@ export class SelectList implements Component, MouseRoutable {
 			filter: this.#nativeMark === undefined ? query.trim() || undefined : undefined,
 			empty:
 				query.trim().length > 0
-					? (this.layout.noMatchText ?? "No matching items")
-					: (this.layout.emptyText ?? "No items"),
+					? uiText(this.layout.noMatchText ?? "No matching items")
+					: uiText(this.layout.emptyText ?? "No items"),
 			max:
 				typeof cachedMax === "object" && cachedMax.lines === this.#maxVisible
 					? cachedMax
@@ -395,8 +402,8 @@ export class SelectList implements Component, MouseRoutable {
 			}
 			const message =
 				this.#selection.query.trim().length > 0
-					? (this.layout.noMatchText ?? "No matching items")
-					: (this.layout.emptyText ?? "No items");
+					? uiText(this.layout.noMatchText ?? "No matching items")
+					: uiText(this.layout.emptyText ?? "No items");
 			lines.push(this.theme.noMatch(`  ${message}`));
 			return lines;
 		}
@@ -691,19 +698,24 @@ export class SelectList implements Component, MouseRoutable {
 	#sanitizedEntry(item: SelectItem): { label: string; description: string | undefined } {
 		const sourceLabel = item.label || item.value;
 		const sourceDescription = item.description;
+		// Labels and descriptions are chrome; `value` (what the list reports back)
+		// is identity and never passes through the translator.
+		const textVersion = uiTextVersion();
 		const cached = this.#sanitized.get(item);
 		if (
 			cached !== undefined &&
 			cached.sourceLabel === sourceLabel &&
-			cached.sourceDescription === sourceDescription
+			cached.sourceDescription === sourceDescription &&
+			cached.textVersion === textVersion
 		) {
 			return cached;
 		}
 		const entry = {
 			sourceLabel,
 			sourceDescription,
-			label: sanitizeSingleLine(sourceLabel),
-			description: sourceDescription ? sanitizeSingleLine(sourceDescription) : undefined,
+			textVersion,
+			label: sanitizeSingleLine(uiText(sourceLabel)),
+			description: sourceDescription ? sanitizeSingleLine(uiText(sourceDescription)) : undefined,
 		};
 		this.#sanitized.set(item, entry);
 		return entry;
@@ -790,12 +802,14 @@ export class SelectList implements Component, MouseRoutable {
 	}
 
 	#getFilterText(item: SelectItem): string {
-		let text = `${item.label} ${item.value}`;
+		// Match both languages: a user reading Chinese may still type an English
+		// term (and vice versa), so the source strings stay searchable.
+		let text = `${item.label} ${uiText(item.label)} ${item.value}`;
 		if (item.description) {
-			text += ` ${item.description}`;
+			text += ` ${item.description} ${uiText(item.description)}`;
 		}
 		if (item.hint) {
-			text += ` ${item.hint}`;
+			text += ` ${item.hint} ${uiText(item.hint)}`;
 		}
 		if (item.searchText) {
 			text += ` ${item.searchText}`;

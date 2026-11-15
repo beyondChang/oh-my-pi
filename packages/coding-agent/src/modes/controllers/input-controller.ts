@@ -94,6 +94,7 @@ import {
 	cfgTuiMouse,
 } from "../settings";
 import { cfgHideThinkingBlock } from "../../session/settings";
+import { localizeUiText } from "../../i18n";
 
 /** Bare words that quit (as `/<word>`) when typed alone into a session with no messages. */
 const BARE_EXIT_WORDS: Record<string, true> = { exit: true, quit: true, q: true };
@@ -2904,6 +2905,7 @@ export class InputController {
 	 * inline paste marker, so the pasted content is never lost.
 	 */
 	async presentLargePasteMenu(text: string, lineCount: number): Promise<void> {
+		// The values stay English: the switch below matches them to decide what to do.
 		const WRAPPED_BLOCK = "Attach as a wrapped block";
 		const LOCAL_FILE = "Attach as local file";
 		const INLINE = "Paste inline";
@@ -2911,13 +2913,16 @@ export class InputController {
 		let choice: string | undefined;
 		try {
 			choice = await this.ctx.showHookSelector(
-				`Pasted ${lineCount} lines`,
+				localizeUiText(`Pasted ${lineCount} lines`),
 				[
-					{ label: WRAPPED_BLOCK, description: "Wrap the text in <attachment> tags, collapsed to a marker" },
-					{ label: LOCAL_FILE, description: "Save the text to a local://paste file" },
-					{ label: INLINE, description: "Collapse the text to an inline paste marker" },
+					{
+						label: WRAPPED_BLOCK,
+						description: localizeUiText("Wrap the text in <attachment> tags, collapsed to a marker"),
+					},
+					{ label: LOCAL_FILE, description: localizeUiText("Save the text to a local://paste file") },
+					{ label: INLINE, description: localizeUiText("Collapse the text to an inline paste marker") },
 				],
-				{ helpText: `${editorKey("tui.select.cancel")} to paste inline` },
+				{ helpText: `${editorKey("tui.select.cancel")} ${localizeUiText("to paste inline")}` },
 			);
 		} catch (error) {
 			logger.warn("large-paste menu failed", { error: error instanceof Error ? error.message : String(error) });

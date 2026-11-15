@@ -4,6 +4,7 @@ import { Markdown } from "./components/markdown";
 import { matchesSelectCancel } from "./keybinding-matchers";
 import type { KeyName } from "./key-hint-format";
 import { canonicalKeyId } from "./keybindings";
+import { uiText } from "./i18n";
 import { col, node, span } from "./native/describe";
 import type { NativeNode, NativeUiEvent } from "./native/node";
 import { actionBar, actionButton } from "./native/overlay";
@@ -190,10 +191,10 @@ export function buildHotkeysMarkdown(bindings: HotkeysMarkdownBindings): string 
 	const lines: string[] = [];
 	for (const [index, group] of hotkeyGroups(bindings).entries()) {
 		if (index > 0) lines.push("");
-		lines.push(`**${group.title}**`, "| Key | Action |", "|-----|--------|");
+		lines.push(`**${uiText(group.title)}**`, `| ${uiText("Key")} | ${uiText("Action")} |`, "|-----|--------|");
 		for (const row of group.rows) {
 			const keys = row.keys.map(part => markdownPart(bindings, part)).join("");
-			lines.push(`| ${keys} | ${row.action} |`);
+			lines.push(`| ${keys} | ${uiText(row.action)} |`);
 		}
 	}
 	return lines.join("\n");
@@ -221,10 +222,12 @@ function keySpans(parts: readonly HotkeyPart[]): TspSpan[] {
 
 /** Inline markdown (backticks) of an action description as spans: code runs mono, the rest plain. */
 function actionSpans(action: string): TspSpan[] {
-	return action.split(/(`[^`]+`)/).flatMap(piece => {
-		if (piece === "") return [];
-		return piece.startsWith("`") && piece.endsWith("`") ? [span(piece.slice(1, -1), "code")] : [span(piece)];
-	});
+	return uiText(action)
+		.split(/(`[^`]+`)/)
+		.flatMap(piece => {
+			if (piece === "") return [];
+			return piece.startsWith("`") && piece.endsWith("`") ? [span(piece.slice(1, -1), "code")] : [span(piece)];
+		});
 }
 
 /**
@@ -250,13 +253,13 @@ export class HotkeysSheetComponent implements Component {
 		const sections = hotkeyGroups(this.#bindings).map((group, index) =>
 			node(
 				"section",
-				{ head: group.title, role: "omp.hotkeys.group" },
+				{ head: uiText(group.title), role: "omp.hotkeys.group" },
 				[
 					node("table", {
 						role: "omp.hotkeys.table",
 						cols: [
-							{ id: "keys", head: "Key" },
-							{ id: "action", head: "Action", grow: 1 },
+							{ id: "keys", head: uiText("Key") },
+							{ id: "action", head: uiText("Action"), grow: 1 },
 						],
 						rows: group.rows.map((row, rowIndex) => ({
 							id: String(rowIndex),

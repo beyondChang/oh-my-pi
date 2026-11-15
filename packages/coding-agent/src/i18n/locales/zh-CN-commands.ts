@@ -256,4 +256,13 @@ export const zhCNCommands: Readonly<Record<string, string>> = {
 		"开始或停止将当前屏幕录制为可回放文件（omp play）",
 	"Forget every file and folder approval Ask and remember has recorded":
 		"清除 Ask and remember 记录的所有文件和目录审批",
+	"Leave autoresearch mode": "退出自动研究模式",
+	"Reset worktree to baseline and close the active session": "将工作树重置到基线并关闭当前会话",
+	"Select a one-off model for this consultation": "为本次咨询选择一个一次性模型",
+	"Show autoresearch dashboard overlay": "显示自动研究面板浮层",
+	"Toggle autoresearch dashboard": "切换自动研究面板",
+	"Toggle builtin autoresearch mode, or pass off / clear, or a goal message.":
+		"切换内置自动研究模式，或传入 off / clear，或一条目标说明。",
+	"Use the active role or default model saved with this session": "使用当前角色或本会话保存的默认模型",
+	"(hook command)": "（hook 命令）",
 };

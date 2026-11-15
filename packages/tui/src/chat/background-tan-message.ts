@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import type { BackgroundTanDispatchDetails, CustomMessage } from "./messages";
 import { replaceTabs } from "../render/render-utils";
 import { theme } from "../theme";
@@ -23,7 +24,7 @@ export function createBackgroundTanDispatchBlock(message: CustomMessage<unknown>
 	const details = (message as CustomMessage<Partial<BackgroundTanDispatchDetails>>).details;
 	const jobId = details?.jobId ?? "unknown";
 	const work = details?.work ? previewWork(details.work) : undefined;
-	const spans = [span("Tangent dispatched"), span(" · ", "dim"), span(`task ${jobId}`, "dim")];
+	const spans = [span(uiText("Tangent dispatched")), span(" · ", "dim"), span(`task ${jobId}`, "dim")];
 	if (work) spans.push(span(" · ", "dim"), span(work, "dim"));
 	return new TranscriptStatusBlock([
 		{

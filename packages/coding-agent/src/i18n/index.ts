@@ -1,10 +1,15 @@
 import { type EnglishTranslationKey, en } from "./locales/en";
 import { zhCN } from "./locales/zh-CN";
+import { zhCNCliText } from "./locales/zh-CN-cli";
 import { zhCNCommands } from "./locales/zh-CN-commands";
 import { settingsZhCN } from "./locales/zh-CN-settings";
 import { settingsZhCNLate } from "./locales/zh-CN-settings-late";
 import { settingsZhCNLateContext } from "./locales/zh-CN-settings-late-context";
 import { settingsZhCNLateModel } from "./locales/zh-CN-settings-late-model";
+import { settingsZhCNExtra } from "./locales/zh-CN-settings-extra";
+import { zhCNTuiText } from "./locales/zh-CN-tui";
+import { zhCNTuiOverlays } from "./locales/zh-CN-tui-overlays";
+import { zhCNStatus } from "./locales/zh-CN-status";
 import { zhCNUiText } from "./locales/zh-CN-ui";
 
 export type Language = "en" | "zh-CN";
@@ -45,7 +50,7 @@ export function setLanguage(value: unknown): Language {
 	if (!language || language === currentLanguage) return currentLanguage;
 
 	currentLanguage = language;
-	for (const listener of [...languageListeners]) listener(currentLanguage);
+	for (const listener of languageListeners) listener(currentLanguage);
 	return currentLanguage;
 }
 
@@ -89,7 +94,25 @@ for (const [englishText, chineseText] of Object.entries(zhCNUiText)) {
 for (const [englishText, chineseText] of Object.entries(zhCNCommands)) {
 	if (englishText !== chineseText) chineseUiText.set(englishText, chineseText);
 }
-for (const settings of [settingsZhCN, settingsZhCNLate, settingsZhCNLateModel, settingsZhCNLateContext]) {
+for (const [englishText, chineseText] of Object.entries(zhCNTuiText)) {
+	if (englishText !== chineseText && !chineseUiText.has(englishText)) chineseUiText.set(englishText, chineseText);
+}
+for (const [englishText, chineseText] of Object.entries(zhCNTuiOverlays)) {
+	if (englishText !== chineseText && !chineseUiText.has(englishText)) chineseUiText.set(englishText, chineseText);
+}
+for (const [englishText, chineseText] of Object.entries(zhCNCliText)) {
+	if (englishText !== chineseText && !chineseUiText.has(englishText)) chineseUiText.set(englishText, chineseText);
+}
+for (const [englishText, chineseText] of Object.entries(zhCNStatus)) {
+	if (englishText !== chineseText && !chineseUiText.has(englishText)) chineseUiText.set(englishText, chineseText);
+}
+for (const settings of [
+	settingsZhCN,
+	settingsZhCNLate,
+	settingsZhCNLateModel,
+	settingsZhCNLateContext,
+	settingsZhCNExtra,
+]) {
 	for (const [englishText, chineseText] of Object.entries(settings)) {
 		if (englishText !== chineseText && !chineseUiText.has(englishText)) chineseUiText.set(englishText, chineseText);
 	}
@@ -175,7 +198,55 @@ const dynamicStatusPatterns: ReadonlyArray<readonly [RegExp, (match: RegExpMatch
 	],
 	// Details that probe messages carry verbatim (the surrounding sentence is translated above).
 	[/^No working Python interpreter found\. Tried: (.+)$/, m => `没有可用的 Python 解释器。已尝试：${m[1]}`],
+	// Approval prompts. Tool names, paths and reasons are user- or provider-supplied
+	// identifiers: only the framing words around them are translated.
+	[/^Allow tool: (.+)$/, m => `允许工具：${m[1]}`],
+	[/^Reason: (.+)$/, m => `原因：${m[1]}`],
+	[/^Arguments:$/, () => "参数："],
+	[/^Approve Directory: (.+)$/, m => `允许目录：${m[1]}`],
+	[/^Always Approve Directory: (.+)$/, m => `始终允许目录：${m[1]}`],
+	[/^Approve (.+) for this session$/, m => `本会话内允许 ${m[1]}`],
+	[/^Approve and keep context \((.+)\)$/, m => `批准并保留上下文（${m[1]}）`],
 	[/^Python executable not found on PATH$/, () => "在 PATH 中找不到 Python 可执行文件"],
+	// Help appendix lines that embed a path or program name.
+	[/^Session storage directory \(default: (.+)\)$/, m => `会话存储目录（默认：${m[1]}）`],
+	[/^Execute Python code \(requires: (.+)\)$/, m => `执行 Python 代码（需要：${m[1]}）`],
+	// Tree selector and model browser empty states, which embed a query or a key hint.
+	[/^No entries match search "(.+)"$/, m => `没有匹配搜索 “${m[1]}” 的条目`],
+	[/^No entries match search "(.*)"\. Press $/, m => `没有匹配搜索 “${m[1]}” 的条目。按 `],
+	[/^Press (.+) to clear the search$/, m => `按 ${m[1]} 清空搜索`],
+	[/^Press (.+) to show all, (.+) for default$/, m => `按 ${m[1]} 显示全部，按 ${m[2]} 恢复默认`],
+	[/^(\d+) entries hidden by the current filter (.+)$/, m => `当前筛选条件 ${m[2]} 隐藏了 ${m[1]} 个条目`],
+	[/^ to clear the search$/, () => " 清空搜索"],
+	[/^ to show all, $/, () => " 显示全部，"],
+	[/^ for default$/, () => " 恢复默认"],
+	// Model browser / hub discovery states, which embed a provider label or an age.
+	[
+		/^No matching models in (.+)\. Switch to All models to search every provider\.$/,
+		m => `在 ${m[1]} 中没有匹配的模型。切换到「所有模型」可搜索全部供应商。`,
+	],
+	[
+		/^Using cached model list from (.+)\. Live refresh is still pending\.$/,
+		m => `正在使用 ${m[1]} 的缓存模型列表，实时刷新仍待完成。`,
+	],
+	[
+		/^Provider unavailable\. Using cached model list from (.+)\.$/,
+		m => `供应商不可用。正在使用 ${m[1]} 的缓存模型列表。`,
+	],
+	[/^Discovery failed: (.+)$/, m => `模型发现失败：${m[1]}`],
+	[
+		/^Discovery endpoint (.+) returned 404\. Point baseUrl at the host that serves \/models \(usually \.\.\.\/v1\)\.$/,
+		m => `发现端点 ${m[1]} 返回 404。请将 baseUrl 指向提供 /models 的主机（通常是 .../v1）。`,
+	],
+	// Autocomplete status lines that embed a model id or a count.
+	[/^Model: (.+)$/, m => `模型：${m[1]}`],
+	[/^Presets: (\d+) saved$/, m => `预设：已保存 ${m[1]} 个`],
+	[
+		/^Arguments passed to (\S+) unchanged \(options, -c COMMAND, a script and its arguments\)$/,
+		m => `原样传给 ${m[1]} 的参数（选项、-c COMMAND、脚本及其参数）`,
+	],
+	[/^Presets: none saved$/, () => "预设：无已保存"],
+	[/^Pasted (\d+) lines$/, m => `已粘贴 ${m[1]} 行`],
 ];
 
 function localizeAdvisorState(state: string): string {

@@ -4,6 +4,7 @@
  * the interactive host registers the one handler that runs omp's existing
  * commands for them, so a click and the key binding take the same path.
  */
+import { uiText } from "../i18n";
 import type { TspMenuEntry } from "@oh-my-pi/pi-wire";
 import type { SpotlightDetails } from "./spotlight";
 
@@ -84,10 +85,12 @@ const TURN_ACTS: Readonly<Record<string, TurnAct>> = {
 export function turnHoldEntries(role: TurnMessage["role"], copy: TspMenuEntry): TspMenuEntry[] {
 	return [
 		copy,
-		...(role === "user" ? [{ id: "edit-turn", label: "Edit & resend", icon: "edit", detail: "To composer" }] : []),
-		{ id: "retry-turn", label: "Retry turn", icon: "refresh" },
-		{ id: "rewind-turn", label: "Rewind to here…", icon: "rewind" },
-		{ id: "fork-turn", label: "Fork from here", icon: "branch", detail: "New session" },
+		...(role === "user"
+			? [{ id: "edit-turn", label: uiText("Edit & resend"), icon: "edit", detail: uiText("To composer") }]
+			: []),
+		{ id: "retry-turn", label: uiText("Retry turn"), icon: "refresh" },
+		{ id: "rewind-turn", label: uiText("Rewind to here…"), icon: "rewind" },
+		{ id: "fork-turn", label: uiText("Fork from here"), icon: "branch", detail: uiText("New session") },
 	];
 }
 

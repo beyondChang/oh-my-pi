@@ -6,6 +6,7 @@
  * (rounded corners, sharp tee/cross junctions) and the `border`/`accent` theme
  * colors so all outlined overlays read identically.
  */
+import { uiText } from "../i18n";
 import type { DescribeContext, NativeChild, NativeNode } from "../native/node";
 import { node } from "../native/describe";
 import { overlayCard } from "../native/overlay";
@@ -324,7 +325,7 @@ export class OverlayPanel implements Component {
 		) {
 			return memo.result;
 		}
-		const result: string[] = [topBorder(width, this.#title)];
+		const result: string[] = [topBorder(width, uiText(this.#title))];
 		for (let i = 0; i < this.children.length; i++) {
 			if (this.children[i] instanceof PanelDivider) {
 				result.push(divider(width));

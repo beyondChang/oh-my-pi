@@ -4,6 +4,7 @@ import { KeybindingsManager } from "@oh-my-pi/pi-tui/app-keybindings";
 import { SessionSelectorComponent } from "@oh-my-pi/pi-tui/overlays/session-selector";
 import { initTheme } from "@oh-my-pi/pi-tui/theme";
 import type { SessionInfo } from "@oh-my-pi/pi-coding-agent/session/session-listing";
+import { initializeLanguage } from "@oh-my-pi/pi-coding-agent/i18n";
 
 const ALT_K = "\x1bk";
 const ALT_SHIFT_K = "\x1bK";
@@ -60,6 +61,8 @@ beforeAll(() => {
 beforeEach(() => {
 	previous = getKeybindings();
 	setKeybindings(KeybindingsManager.inMemory());
+	// This suite asserts the English hint labels; pin the language before the selector renders.
+	initializeLanguage("en");
 });
 
 afterEach(() => {

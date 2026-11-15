@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import type { Component } from "../tui";
 import { Ellipsis, renderStatusLine, renderTreeList, truncateToWidth } from "../render";
 import {
@@ -336,7 +337,7 @@ export function describeAgentWrite(
 	const delivered = receipts.filter(receipt => receipt.outcome !== "failed").length;
 	const failed = receipts.length - delivered;
 	const meta: TspSpan[] = [];
-	if (recipient === "all") meta.push(span("broadcast", "muted"));
+	if (recipient === "all") meta.push(span(uiText("broadcast"), "muted"));
 	if (receipts.length === 1) meta.push(span(receipts[0]!.outcome, RECEIPT_TONE[receipts[0]!.outcome]));
 	else if (receipts.length > 1) {
 		if (delivered) meta.push(span(`${delivered} delivered`, "success"));
@@ -456,7 +457,7 @@ export function describeProcRead(
 			node(
 				"item",
 				{
-					label: [span("service", "accent"), span(" "), span(safe(service.name), "toolOutput")],
+					label: [span(uiText("service"), "accent"), span(" "), span(safe(service.name), "toolOutput")],
 					detail: [span(daemonMetaText(service), "muted")],
 					tone:
 						service.state === "failed"
@@ -485,6 +486,6 @@ export function describeProcRead(
 	if (agents.length) counts.push(`${agents.length} agents`);
 	return {
 		head: toolHead(title, id ? span(safe(id), "accent") : undefined, counts.join(" · ")),
-		body: [node("list", { empty: "No background jobs or services.", role: "omp.tool.proc.table" }, items)],
+		body: [node("list", { empty: uiText("No background jobs or services."), role: "omp.tool.proc.table" }, items)],
 	};
 }

@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { Agent } from "@oh-my-pi/pi-agent-core";
 import { ModelRegistry } from "@oh-my-pi/pi-coding-agent/config/model-registry";
 import { resetSettingsForTest, Settings } from "@oh-my-pi/pi-coding-agent/config/settings";
+import { initializeLanguage } from "@oh-my-pi/pi-coding-agent/i18n";
 import { InteractiveMode } from "@oh-my-pi/pi-coding-agent/modes/interactive-mode";
 import { AgentSession } from "@oh-my-pi/pi-coding-agent/session/agent-session";
 import { AuthStorage } from "@oh-my-pi/pi-coding-agent/session/auth-storage";
@@ -46,6 +47,8 @@ describe("text-mode command reports on a real terminal core", () => {
 		});
 		term = new VirtualTerminal(120, ROWS);
 		const composer = new Composer({ terminal: term });
+		// This suite asserts the English chrome, so pin the language before the mode reads it.
+		initializeLanguage("en");
 		mode = new InteractiveMode(session, "test", () => {}, undefined, undefined, undefined, composer);
 	});
 

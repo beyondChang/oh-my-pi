@@ -1,11 +1,12 @@
 import { combine, effect, register, type Setting, usesProcessState } from "../config/registry";
-import { initializeLanguage, setLanguage } from "../i18n";
+import { initializeLanguage, localizeUiText, onLanguageChanged, setLanguage } from "../i18n";
 import type { Settings } from "../config/settings";
 import { MOTION_MODES, MOTION_PRESETS } from "../config/motion-presets";
 import { formatKeyHint, formatKeyHints } from "@oh-my-pi/pi-tui/app-keybindings";
 import { cfgReadToolResultPreview } from "../tools/settings";
 import { MAGIC_KEYWORDS, type MagicKeywordId } from "./magic-keywords";
 import { TREE_FILTER_MODES } from "@oh-my-pi/pi-tui/overlays/tree-selector";
+import { setUiTranslator } from "@oh-my-pi/pi-tui/i18n";
 import {
 	CONTEXT_LINE_MODE_VALUES,
 	CUSTOM_STATUS_LINE_DEFAULTS,
@@ -13,6 +14,7 @@ import {
 	STATUS_LINE_SEGMENT_IDS,
 	STATUS_LINE_SEPARATOR_VALUES,
 } from "@oh-my-pi/pi-tui/status-line/schema";
+
 import { setChatTranscriptDisplayPreferences } from "@oh-my-pi/pi-tui/chat/display-preferences";
 import { setEditorGapComposerShape } from "@oh-my-pi/pi-tui/prompt/editor-top-gap";
 import { setEmojiAutocompleteEnabled } from "@oh-my-pi/pi-tui/prompt/prompt-action-autocomplete";
@@ -24,6 +26,17 @@ import { setAutoThemeMapping, setColorBlindMode, setSymbolPreset } from "@oh-my-
 import { DEFAULT_MAX_FPS, parseMaxFps, setMaxFps } from "@oh-my-pi/pi-tui/frame-rate";
 import { setMotionEffects } from "@oh-my-pi/pi-tui/motion-effects";
 import { parseSpinnerInterval, setSpinnerInterval } from "@oh-my-pi/pi-tui/spinner-clock";
+
+/**
+ * The TUI library ships English dialog chrome and resolves every label through a
+ * host-injected translator. Register ours once at module load; a language switch
+ * re-registers so components keyed on the translator generation redraw.
+ */
+function installTuiTranslator(): void {
+	setUiTranslator(localizeUiText);
+}
+installTuiTranslator();
+onLanguageChanged(() => installTuiTranslator());
 
 const EMPTY_UNKNOWN_RECORD: Record<string, unknown> = {};
 

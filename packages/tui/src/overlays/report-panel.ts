@@ -18,6 +18,7 @@ import { actionBar, actionButton } from "../native/overlay";
 import { col } from "../native/describe";
 import type { NativeNode, NativeScroll, NativeUiEvent } from "../native/node";
 import { theme } from "../theme/theme";
+import { uiText } from "../i18n";
 import type { Component } from "../tui";
 
 /** Options of a {@link ReportPanel}. */
@@ -72,17 +73,17 @@ export class ReportPanel extends OverlayPanel {
 	#native: { scroll: NativeScroll | undefined; node: NativeNode } | undefined;
 
 	constructor(options: ReportPanelOptions) {
-		super(options.title, "omp.overlay.report");
+		super(uiText(options.title), "omp.overlay.report");
 		this.nativeOverlay = {
 			role: "omp.overlay.report",
 			size: "lg",
 			anchor: "center",
-			head: options.head ?? options.title,
+			head: options.head ?? uiText(options.title),
 		};
 		this.#body = options.body;
 		this.#onClose = options.onClose;
 		this.#maxRows = options.maxRows;
-		this.#closeHint = `${options.closeKey} to close`;
+		this.#closeHint = `${options.closeKey} ${uiText("to close")}`;
 		this.#view = new ScrollView(options.body, {
 			height: 0,
 			scrollbar: "auto",
@@ -101,7 +102,7 @@ export class ReportPanel extends OverlayPanel {
 	 * its own {@link handleInput} closes it, so the hint names that key.
 	 */
 	holdFocus(): void {
-		this.#closeHint = `${editorKey("tui.select.cancel")} to close`;
+		this.#closeHint = `${editorKey("tui.select.cancel")} ${uiText("to close")}`;
 	}
 
 	/**
@@ -118,7 +119,7 @@ export class ReportPanel extends OverlayPanel {
 		const overflows = rows > bodyMax;
 		this.#bodyRows = Math.min(rows, bodyMax);
 		this.#view.setHeight(this.#bodyRows);
-		const scrollHint = `${editorKey("tui.select.pageUp")}/${editorKey("tui.select.pageDown")} scroll · `;
+		const scrollHint = `${editorKey("tui.select.pageUp")}/${editorKey("tui.select.pageDown")} ${uiText("scroll")} · `;
 		this.#footer.setText(theme.fg("muted", overflows ? scrollHint + this.#closeHint : this.#closeHint));
 		const lines = super.render(width);
 		return cap !== undefined && lines.length > cap ? lines.slice(0, Math.max(0, cap)) : lines;

@@ -1,3 +1,4 @@
+import { uiText, uiTextVersion } from "../i18n";
 import { compactText, rowsText, styledSpans } from "../native/spans";
 import { node } from "../native/describe";
 import type { DescribeContext, NativeNode } from "../native/node";
@@ -30,7 +31,9 @@ export interface SectionOptions {
 /** Compose a width-bounded heading, rule, child rows, and optional trailing blank line. */
 export class Section implements Component {
 	readonly #options: SectionOptions;
-	#cache: { width: number; epoch: number; child: readonly string[]; lines: readonly string[] } | undefined;
+	#cache:
+		| { width: number; epoch: number; text: number; child: readonly string[]; lines: readonly string[] }
+		| undefined;
 	#disposed = false;
 	#native: { title: string; node: NativeNode } | undefined;
 
@@ -57,7 +60,7 @@ export class Section implements Component {
 	/** A `section` headed by the styled title; the rule is the terminal's. */
 	describe(_cx: DescribeContext): NativeNode {
 		const options = this.#options;
-		const rawTitle = singleLine(options.title);
+		const rawTitle = singleLine(uiText(options.title));
 		const title = options.titleStyle?.(rawTitle) ?? rawTitle;
 		if (this.#native?.title === title) return this.#native.node;
 		const body = isComponent(options.body) ? options.body : rowsText(options.body);
@@ -69,12 +72,18 @@ export class Section implements Component {
 	render(width: number): readonly string[] {
 		const renderWidth = finiteWidth(width);
 		const epoch = getWidthConfigEpoch();
+		const textVersion = uiTextVersion();
 		const child = isComponent(this.#options.body) ? this.#options.body.render(renderWidth) : this.#options.body;
-		if (this.#cache?.width === renderWidth && this.#cache.epoch === epoch && this.#cache.child === child) {
+		if (
+			this.#cache?.width === renderWidth &&
+			this.#cache.epoch === epoch &&
+			this.#cache.text === textVersion &&
+			this.#cache.child === child
+		) {
 			return this.#cache.lines;
 		}
 		const desiredRuleWidth = this.#options.ruleWidth === "fill" ? renderWidth : finiteWidth(this.#options.ruleWidth);
-		const rawTitle = singleLine(this.#options.title);
+		const rawTitle = singleLine(uiText(this.#options.title));
 		const styledTitle = this.#options.titleStyle?.(rawTitle) ?? rawTitle;
 		const rawRule = fillCells(this.#options.ruleGlyph, Math.min(renderWidth, desiredRuleWidth));
 		const styledRule = this.#options.ruleStyle?.(rawRule) ?? rawRule;
@@ -84,7 +93,7 @@ export class Section implements Component {
 			...child.map(line => truncateToWidth(singleLine(line), renderWidth, Ellipsis.Omit)),
 		];
 		if (this.#options.blankAfter === true) lines.push("");
-		this.#cache = { width: renderWidth, epoch, child, lines };
+		this.#cache = { width: renderWidth, epoch, text: textVersion, child, lines };
 		return lines;
 	}
 }

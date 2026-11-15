@@ -28,7 +28,7 @@ import {
 	pickerHits,
 } from "../native/picker";
 import type { DescribeContext, NativeChild, NativeNode, NativeUiEvent } from "../native/node";
-import { actionHint, hintsRow, type NativeHint, overlayCard } from "../native/overlay";
+import { actionHint, hintsRow, type NativeHint, overlayCard, sectionHead } from "../native/overlay";
 import { plainText } from "../native/spans";
 import { theme } from "../theme/theme";
 import { contentRowWidth } from "../chrome/selector-helpers";
@@ -66,6 +66,7 @@ export interface SessionListing<T extends SessionSelectorEntry = SessionSelector
 import { shortenPath } from "../render/render-utils";
 import { formTheme } from "../chrome/form-theme";
 import { HookSelectorComponent } from "./hook-selector";
+import { uiText } from "../i18n";
 import { bottomBorder, OverlayPanel, row, topBorder } from "../chrome/overlay-box";
 import { TextFormField } from "../components/form";
 import { MenuSelection, getMenuWindow } from "../components/menu-selection";
@@ -141,7 +142,7 @@ const PREVIEW_EXCERPT_CHARS = 1200;
 /** The preview follows the selection once it rests this long (holding ↓ doesn't flood the wire). */
 const PREVIEW_SETTLE_MS = 60;
 const DAY_MS = 86_400_000;
-const PINNED_GROUP = { id: "pinned", label: "Pinned" };
+const PINNED_GROUP = { id: "pinned", label: uiText("Pinned") };
 /** Search Input actions that delete backward: on a typed query they edit it even when bound to `app.session.delete`. */
 const SEARCH_BACKWARD_DELETE = [
 	"tui.editor.deleteCharBackward",
@@ -152,10 +153,10 @@ const SEARCH_BACKWARD_DELETE = [
 /** Day group of a session's last modification, relative to local midnight today. */
 function sessionDayGroup(modified: Date, startOfToday: number): { id: string; label: string } {
 	const at = modified.getTime();
-	if (at >= startOfToday) return { id: "today", label: "Today" };
-	if (at >= startOfToday - DAY_MS) return { id: "yesterday", label: "Yesterday" };
-	if (at >= startOfToday - 6 * DAY_MS) return { id: "week", label: "This week" };
-	return { id: "earlier", label: "Earlier" };
+	if (at >= startOfToday) return { id: "today", label: uiText("Today") };
+	if (at >= startOfToday - DAY_MS) return { id: "yesterday", label: uiText("Yesterday") };
+	if (at >= startOfToday - 6 * DAY_MS) return { id: "week", label: uiText("This week") };
+	return { id: "earlier", label: uiText("Earlier") };
 }
 
 /** A cwd as dim-prefix / strong-tail path spans. */
@@ -196,7 +197,7 @@ function sessionPreview(session: SessionSelectorEntry, forkedFrom: string | unde
 			["Status", status && [status]],
 			["Forked from", forkedFrom],
 		]),
-		conversation.length > 0 && node("section", { head: "Conversation" }, conversation),
+		conversation.length > 0 && node("section", { head: sectionHead("Conversation") }, conversation),
 	]);
 }
 
@@ -294,8 +295,8 @@ interface SessionPickerMessage {
 }
 
 const SCOPE_TABS: readonly { id: "folder" | "all"; label: string }[] = [
-	{ id: "folder", label: "Current folder" },
-	{ id: "all", label: "All projects" },
+	{ id: "folder", label: uiText("Current folder") },
+	{ id: "all", label: uiText("All projects") },
 ];
 
 /** Returns the IDs of sessions whose recorded prompts match a query, best first. */
@@ -1638,7 +1639,7 @@ export class SessionSelectorComponent<T extends SessionSelectorEntry = SessionSe
 		this.#globalSessions = options.allSessions?.sessions ?? null;
 		this.#getTerminalRows = options.getTerminalRows ?? (() => 24);
 		this.#fillHeight = options.fillHeight ?? false;
-		this.#title = options.title ?? "Resume Session";
+		this.#title = uiText(options.title ?? "Resume Session");
 		this.#actionLabel = options.actionLabel ?? "Resume";
 		this.#pickerTitle = options.title;
 		this.#standalone = options.standalone ?? false;
@@ -1758,7 +1759,7 @@ export class SessionSelectorComponent<T extends SessionSelectorEntry = SessionSe
 
 	#headerLabel(): string {
 		if (this.#scopeLabel === false) return this.#title;
-		const scopeLabel = this.#scopeLabel ?? (this.#scope === "all" ? "all projects" : "current folder");
+		const scopeLabel = uiText(this.#scopeLabel ?? (this.#scope === "all" ? "all projects" : "current folder"));
 		return `${this.#title} (${scopeLabel})`;
 	}
 
@@ -1970,7 +1971,7 @@ export class SessionSelectorComponent<T extends SessionSelectorEntry = SessionSe
 		};
 		const field = new TextFormField({
 			theme: formTheme,
-			label: "Rename session",
+			label: uiText("Rename session"),
 			initialValue: session.title ?? "",
 			empty: "cancel",
 			onSubmit: value => {
@@ -2038,13 +2039,13 @@ export class SessionSelectorComponent<T extends SessionSelectorEntry = SessionSe
 	#pinAction(): { binding: "app.session.pin" | "app.session.unpin"; label: string } | undefined {
 		if (!this.#onSetPinned) return undefined;
 		return this.#sessionList.selectedPinned
-			? { binding: "app.session.unpin", label: "unpin" }
-			: { binding: "app.session.pin", label: "pin" };
+			? { binding: "app.session.unpin", label: uiText("unpin") }
+			: { binding: "app.session.pin", label: uiText("pin") };
 	}
 
 	/** Blank · keybinding hint · bottom border. Rendered by {@link render}. */
 	#footerLines(width: number): string[] {
-		const scopeHint = this.#scope === "all" ? "current folder" : "all projects";
+		const scopeHint = uiText(this.#scope === "all" ? "current folder" : "all projects");
 		// Keys mirror SessionList#handleInput; cancel is `app.interrupt` (raw Escape when unbound).
 		const cancel = interruptKey();
 		const pin = this.#pinAction();
@@ -2118,7 +2119,7 @@ export class SessionSelectorComponent<T extends SessionSelectorEntry = SessionSe
 		if (pin) hints.push(actionHint(pin.binding, pin.label));
 		hints.push({ keys: ["enter"], label: "select" });
 		if (this.#sessionList.onToggleScope) {
-			hints.push({ keys: ["tab"], label: this.#scope === "all" ? "current folder" : "all projects" });
+			hints.push({ keys: ["tab"], label: uiText(this.#scope === "all" ? "current folder" : "all projects") });
 		}
 		hints.push({ keys: [boundKeys("app.interrupt", ["escape"])[0] ?? "escape"], label: "cancel" });
 		const result = overlayCard("omp.overlay.sessions", tabs ? this.#title : this.title, [
@@ -2210,12 +2211,12 @@ export class SessionSelectorComponent<T extends SessionSelectorEntry = SessionSe
 				actions,
 				state: loading ? "loading" : errorOpen ? "error" : "ready",
 				...(loading || errorOpen ? { message: message!.text } : {}),
-				empty: this.#scope === "all" || !toggle ? "No sessions yet" : "No sessions in this folder yet",
+				empty: uiText(this.#scope === "all" || !toggle ? "No sessions yet" : "No sessions in this folder yet"),
 				confirm: choice
 					? {
 							text: `Delete “${sessionLabel(choice.session)}”? This removes the session file.`,
 							act: "delete-confirm",
-							label: "Delete",
+							label: uiText("Delete"),
 						}
 					: null,
 			},

@@ -109,6 +109,7 @@ import { ACP_TERMINAL_AUTH_FLAG } from "./terminal-auth";
 
 import { cfgDisabledExtensions, cfgExtensions } from "../../extensibility/settings";
 import { cfgPlanEnabled } from "../../plan-mode/settings";
+import { localizeUiText } from "../../i18n";
 
 const ACP_DEFAULT_MODE_ID = "default";
 const ACP_PLAN_MODE_ID = "plan";
@@ -1041,7 +1042,9 @@ export class AcpAgent implements Agent {
 			{
 				id: "agent",
 				name: "Use existing local credentials",
-				description: "Authenticate via the provider keys/OAuth state already configured under ~/.omp.",
+				description: localizeUiText(
+					"Authenticate via the provider keys/OAuth state already configured under ~/.omp.",
+				),
 			},
 		];
 		if (params.clientCapabilities?.auth?.terminal === true) {
@@ -1049,7 +1052,7 @@ export class AcpAgent implements Agent {
 				type: "terminal",
 				id: "terminal",
 				name: "Set up omp in terminal",
-				description: "Launch the omp TUI to add provider keys and select models.",
+				description: localizeUiText("Launch the omp TUI to add provider keys and select models."),
 				args: [ACP_TERMINAL_AUTH_FLAG],
 			});
 		}
@@ -2528,12 +2531,18 @@ export class AcpAgent implements Agent {
 	}
 
 	#getAvailableModes(session: AgentSession): Array<{ id: string; name: string; description: string }> {
-		const modes = [{ id: ACP_DEFAULT_MODE_ID, name: "Default", description: "Standard ACP headless mode" }];
+		// The mode `name` stays English: a client may match on it; only the
+		// human-facing description is localized.
+		const modes = [
+			{ id: ACP_DEFAULT_MODE_ID, name: "Default", description: localizeUiText("Standard ACP headless mode") },
+		];
 		if (cfgPlanEnabled.get(session.settings)) {
 			modes.push({
 				id: ACP_PLAN_MODE_ID,
 				name: "Plan",
-				description: "Read-only planning mode that drafts a plan to a markdown file before any code changes",
+				description: localizeUiText(
+					"Read-only planning mode that drafts a plan to a markdown file before any code changes",
+				),
 			});
 		}
 		void session;

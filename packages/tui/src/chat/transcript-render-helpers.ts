@@ -4,6 +4,7 @@
  * transcript rows from persisted message entries; holding the row construction
  * here keeps the two byte-for-byte identical.
  */
+import { uiText } from "../i18n";
 import type { AgentMessage } from "@oh-my-pi/pi-agent-core";
 import type { TspSpan } from "@oh-my-pi/pi-wire";
 import { type Component } from "../tui";
@@ -79,7 +80,7 @@ export function buildAsyncResultBlock(message: CustomOrHookMessage): ToolActivit
 			],
 			native: {
 				tone: "success",
-				message: [span("Background job completed"), ...facts([type, jobId, duration])],
+				message: [span(uiText("Background job completed")), ...facts([type, jobId, duration])],
 			},
 		});
 		if (job.meta?.artifactError) rows.push(artifactErrorRow(job.meta.artifactError));

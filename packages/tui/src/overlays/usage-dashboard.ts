@@ -44,6 +44,7 @@ import type { TspSpan, TspTableColumn, TspText, TspTone } from "@oh-my-pi/pi-wir
 import { col, elapsed, node, span, text } from "../native/describe";
 import { type DescribeContext, leafKey, type NativeChild, type NativeNode, type NativeUiEvent } from "../native/node";
 import { actionBar, actionButton, segmentedTabs } from "../native/overlay";
+import { uiText } from "../i18n";
 
 /** Local calendar-day activity consumed by the usage heatmap. */
 export interface DailyActivityPoint {
@@ -471,7 +472,7 @@ function sectionHead(title: string, meta: readonly NativeChild[]): NativeNode {
 	return node(
 		"row",
 		{ role: "omp.usage.section", gap: "sm", align: "center" },
-		[text([span(title)], { role: "omp.usage.section.title" }), node("spacer", { grow: 1 }), ...meta],
+		[text([span(uiText(title))], { role: "omp.usage.section.title" }), node("spacer", { grow: 1 }), ...meta],
 		"head",
 	);
 }
@@ -493,7 +494,7 @@ function statTile(
 		"col",
 		{ role: "omp.usage.stat", gap: "xs", ...(options.title ? { title: options.title } : {}) },
 		[
-			text([span(label)], { role: "omp.usage.stat.label", truncate: "end" }),
+			text([span(uiText(label))], { role: "omp.usage.stat.label", truncate: "end" }),
 			node("row", { gap: "md", align: "end" }, figure, "figure"),
 			text(sub, { role: "omp.usage.stat.sub", truncate: "end" }),
 		],
@@ -672,7 +673,7 @@ interface CardRowLayout {
 
 export class UsageDashboardComponent implements Component {
 	/** The terminal draws the sheet: a large glass overlay titled Usage. */
-	readonly nativeOverlay = { role: "omp.overlay.usage", size: "lg", anchor: "center", head: "Usage" } as const;
+	readonly nativeOverlay = { role: "omp.overlay.usage", size: "lg", anchor: "center", head: uiText("Usage") } as const;
 	#options: UsageDashboardOptions;
 	#reports: UsageReport[];
 	#cards: ProviderCard[];
@@ -1138,8 +1139,8 @@ export class UsageDashboardComponent implements Component {
 			segmentedTabs(
 				{
 					items: [
-						{ id: "overview", label: "Overview" },
-						{ id: "detail", label: "Details" },
+						{ id: "overview", label: uiText("Overview") },
+						{ id: "detail", label: uiText("Details") },
 					],
 					active: this.#view,
 				},
@@ -1244,7 +1245,7 @@ export class UsageDashboardComponent implements Component {
 		return [
 			text([span(parts.join(" · "), "dim")], {
 				role: "omp.usage.section.meta",
-				title: "Each quota shows the mean across a provider's accounts; it resets with the fullest one",
+				title: uiText("Each quota shows the mean across a provider's accounts; it resets with the fullest one"),
 			}),
 		];
 	}
@@ -1452,9 +1453,9 @@ export class UsageDashboardComponent implements Component {
 			const hidden = entry.windows.length - CARD_MAX_WINDOWS;
 			if (hidden > 0) {
 				rows.push(
-					text([span(`${hidden} more in Details`, "dim")], {
+					text([span(uiText(`${hidden} more in Details`), "dim")], {
 						role: "omp.usage.more",
-						title: "Details lists every quota per account  ⏎",
+						title: uiText("Details lists every quota per account  ⏎"),
 					}),
 				);
 			}
@@ -1721,15 +1722,15 @@ export class UsageDashboardComponent implements Component {
 					}
 				}
 				const cols: TspTableColumn[] = [
-					{ id: "limit", head: "Limit", grow: 1, priority: 4 },
-					{ id: "account", head: "Account", truncate: "middle", priority: 1 },
-					{ id: "left", head: "Left", align: "end", priority: 3 },
-					{ id: "reset", head: "Resets", align: "end", priority: 2 },
+					{ id: "limit", head: uiText("Limit"), grow: 1, priority: 4 },
+					{ id: "account", head: uiText("Account"), truncate: "middle", priority: 1 },
+					{ id: "left", head: uiText("Left"), align: "end", priority: 3 },
+					{ id: "reset", head: uiText("Resets"), align: "end", priority: 2 },
 				];
 				children.push(node("table", { cols, rows, role: "omp.usage.limits" }, undefined, "limits"));
 				for (const note of new Set(limitNotes)) children.push(mutedText(note, true));
 			} else if (unavailable.every(account => account.provider !== entry.provider)) {
-				children.push(mutedText("No quotas reported"));
+				children.push(mutedText(uiText("No quotas reported")));
 			}
 			sections.push(node("col", { role: "omp.usage.report", gap: "sm" }, children, entry.provider));
 		}

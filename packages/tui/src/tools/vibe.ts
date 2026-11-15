@@ -1,3 +1,4 @@
+import { uiText } from "../i18n";
 import type { Component } from "../tui";
 import { Text } from "../components/text";
 import { describeShimmer, shimmerEnabled, shimmerText } from "../theme/shimmer";
@@ -446,9 +447,9 @@ function describeVibeResult(
 			op === "spawn"
 				? span(`turn started${details.spawned ? ` (job ${details.spawned.jobId})` : ""}`, "success")
 				: details.send?.mode === "steered"
-					? span("steered into the running turn", "success")
+					? span(uiText("steered into the running turn"), "success")
 					: details.send?.mode === "queued"
-						? span("mid-turn — queued as the next turn", "warning")
+						? span(uiText("mid-turn — queued as the next turn"), "warning")
 						: span(`turn started${details.send?.jobId ? ` (job ${details.send.jobId})` : ""}`, "success");
 		return {
 			head,
@@ -484,7 +485,7 @@ function describeVibeResult(
 	const head: TspSpan[] = toolHead("Vibe", title);
 	if (running > 0) head.push(span(` · ${running} on air`, "accent"));
 	if (settledById.size > 0) head.push(span(` · ${settledById.size} settled`, "success"));
-	if (details.wait?.timedOut) head.push(span(" · timed out", "warning"));
+	if (details.wait?.timedOut) head.push(span(uiText(" · timed out"), "warning"));
 	if (killedMeta) head.push(killedMeta);
 	const nowMs = Date.now();
 	return {

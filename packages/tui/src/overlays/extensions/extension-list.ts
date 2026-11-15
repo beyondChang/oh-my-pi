@@ -5,6 +5,7 @@
  * that toggles the entire provider. All items below are dimmed when the
  * master switch is off.
  */
+import { uiText } from "../../i18n";
 import type { TspPickerGroup, TspPickerItem, TspProps, TspSpan, TspTone } from "@oh-my-pi/pi-wire";
 import type { Component } from "../../tui";
 import { node, span, stableKey } from "../../native/describe";
@@ -377,7 +378,7 @@ export class ExtensionList implements Component {
 			"list",
 			{
 				selected: selected ? nativeItemId(selected) : null,
-				empty: "No extensions found for this provider.",
+				empty: uiText("No extensions found for this provider."),
 				virtual: true,
 				grow: 1,
 				basis: 0,

@@ -30,6 +30,7 @@
  * 	onCancel: () => resolve(undefined),
  * });
  */
+import { uiText } from "../i18n";
 import { formatKeyHint } from "../app-keybindings";
 import { editorKey, editorKeys } from "../chrome/keybinding-hints";
 import { OverlayPanel, PanelDivider, PanelRows } from "../chrome/overlay-box";
@@ -1830,9 +1831,9 @@ export class HtmlFormDialog implements Component, Focusable {
 			problems > 0
 				? [
 						span(`${problems} ${problems === 1 ? "answer needs" : "answers need"} a fix`, "warning"),
-						span(" · Submit opens the first"),
+						span(uiText(" · Submit opens the first")),
 					]
-				: [span("All set · Submit sends these answers")];
+				: [span(uiText("All set · Submit sends these answers"))];
 		const named = this.#form.fields.filter(field => field.name);
 		const items = formAnswers(this.#form, this.data()).map((answer, index) => {
 			const field = named[index]!;
@@ -1900,7 +1901,10 @@ export class HtmlFormDialog implements Component, Focusable {
 		if (this.#remaining !== undefined) items.push(text([span(`${this.#remaining}s`, "muted")]));
 		items.push(
 			// The summary grows (`omp.ask.summary`), end-aligning Cancel and Show.
-			text([span("Question  ", "muted"), span(this.#hiddenSummary())], { truncate: "end", role: "omp.ask.summary" }),
+			text([span(uiText("Question  "), "muted"), span(this.#hiddenSummary())], {
+				truncate: "end",
+				role: "omp.ask.summary",
+			}),
 			actionButton("Cancel", "cancel", { keys: "escape" }),
 			actionButton("Show", "show", { tone: "accent", ...(hideKey ? { keys: hideKey } : {}) }),
 		);

@@ -1,3 +1,4 @@
+import { uiText } from "../../i18n";
 import type { Model } from "@oh-my-pi/pi-ai";
 import { modelKind } from "@oh-my-pi/pi-catalog/types";
 import type { TspPickerProps } from "@oh-my-pi/pi-wire";
@@ -231,7 +232,7 @@ class ModelSceneController implements SetupSceneController {
 					...rows,
 					state,
 					...(state === "error" && this.#discoveryError !== undefined ? { message: this.#discoveryError } : {}),
-					empty: "No models yet. Skip this step and run /login to sign in to a provider.",
+					empty: uiText("No models yet. Skip this step and run /login to sign in to a provider."),
 					actions: [pickerAction("skip", "Skip", "escape", { end: true }), primary],
 				},
 				this.#saveError === undefined
